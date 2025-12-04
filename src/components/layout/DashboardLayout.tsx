@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -19,6 +20,8 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, type, title }: DashboardLayoutProps) {
+  const { data: notifications, isLoading } = useNotifications();
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardSidebar type={type} />
@@ -41,17 +44,30 @@ export function DashboardLayout({ children, type, title }: DashboardLayoutProps)
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="h-5 w-5" />
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                    3
-                  </span>
+                  {notifications && notifications.length > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                      {notifications.length}
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuContent align="end" className="w-80">
                 <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Merchant onboarding request pending</DropdownMenuItem>
-                <DropdownMenuItem>Dispute won • TXN 8823</DropdownMenuItem>
-                <DropdownMenuItem>API usage alert on admin service</DropdownMenuItem>
+                {isLoading ? (
+                  <DropdownMenuItem>Loading...</DropdownMenuItem>
+                ) : notifications && notifications.length > 0 ? (
+                  notifications.map((notification) => (
+                    <DropdownMenuItem key={notification.id}>
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{notification.subject}</span>
+                        <span className="text-xs text-muted-foreground">{notification.message}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem>No new notifications</DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             

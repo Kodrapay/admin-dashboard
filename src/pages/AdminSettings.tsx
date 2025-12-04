@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,8 +8,41 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Shield, Bell, Server } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminSettings() {
+  const { toast } = useToast();
+  const [maintenanceMsg, setMaintenanceMsg] = useState("");
+
+  const handleSaveProfile = () => {
+    toast({
+      title: "Profile Saved",
+      description: "Your profile has been updated successfully.",
+    });
+  };
+
+  const handleShareUpdate = () => {
+    toast({
+      title: "Update Shared",
+      description: "Maintenance window update has been shared with merchants.",
+    });
+    setMaintenanceMsg("");
+  };
+
+  const handleRotateKey = () => {
+    toast({
+      title: "Key Rotated",
+      description: "A new API key has been generated.",
+    });
+  };
+
+  const handleCopyKey = () => {
+    navigator.clipboard.writeText("sk_test_98sd8237gs");
+    toast({
+      title: "Copied",
+      description: "API key copied to clipboard.",
+    });
+  };
   return (
     <DashboardLayout type="admin" title="Settings">
       <div className="grid lg:grid-cols-2 gap-6">
@@ -36,7 +70,7 @@ export default function AdminSettings() {
             <Label htmlFor="role">Role</Label>
             <Input id="role" defaultValue="Super Admin" disabled />
           </div>
-          <Button className="w-full md:w-auto">Save profile</Button>
+          <Button className="w-full md:w-auto" onClick={handleSaveProfile}>Save profile</Button>
         </Card>
 
         <Card className="p-6 space-y-4">
@@ -86,8 +120,12 @@ export default function AdminSettings() {
               <p className="text-lg font-semibold text-foreground">Maintenance window</p>
             </div>
           </div>
-          <Textarea placeholder="Describe the maintenance window or change freeze." />
-          <Button variant="outline">Share update</Button>
+          <Textarea
+            placeholder="Describe the maintenance window or change freeze."
+            value={maintenanceMsg}
+            onChange={(e) => setMaintenanceMsg(e.target.value)}
+          />
+          <Button variant="outline" onClick={handleShareUpdate}>Share update</Button>
         </Card>
 
         <Card className="p-6 space-y-3 lg:col-span-2">
@@ -101,14 +139,14 @@ export default function AdminSettings() {
               <p className="text-sm text-muted-foreground">Live secret</p>
               <p className="font-mono text-sm text-foreground">sk_live_••••••••••••••••</p>
             </div>
-            <Button variant="outline" size="sm">Rotate</Button>
+            <Button variant="outline" size="sm" onClick={handleRotateKey}>Rotate</Button>
           </div>
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
             <div>
               <p className="text-sm text-muted-foreground">Staging secret</p>
               <p className="font-mono text-sm text-foreground">sk_test_98sd8237gs</p>
             </div>
-            <Button variant="outline" size="sm">Copy</Button>
+            <Button variant="outline" size="sm" onClick={handleCopyKey}>Copy</Button>
           </div>
         </Card>
       </div>

@@ -3,8 +3,10 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { TransactionTable } from "@/components/dashboard/TransactionTable";
 import { MerchantTable } from "@/components/dashboard/MerchantTable";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
+import { PendingApprovals } from "@/components/dashboard/PendingApprovals";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { API_BASE_URL, apiClient, fetchFromAPI } from "@/lib/api-client";
 import {
   DollarSign,
@@ -48,8 +50,10 @@ type DashboardStats = {
 };
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [merchantRaw, setMerchantRaw] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: "₦0",
     activeMerchants: 0,
@@ -59,66 +63,69 @@ export default function AdminDashboard() {
     successRate: 0,
   });
 
+  const loadData = async () => {
+    // Fetch transactions from admin endpoint
+    try {
+      const txResp = await fetchFromAPI(apiClient.admin.transactions);
+      const txData: any[] = Array.isArray(txResp) ? txResp : txResp.transactions || txResp.data || [];
+      setTransactions(
+        txData.slice(0, 5).map((tx: any) => ({
+          id: tx.id || tx.reference,
+          reference: tx.reference || tx.id,
+          customer: tx.customer_name || tx.customer || "Customer",
+          email: tx.customer_email || "",
+          amount: (tx.amount || 0) / 100,
+          currency: tx.currency || "NGN",
+          status: (tx.status || "pending") as Transaction["status"],
+          date: tx.created_at || "",
+          merchant: tx.merchant || tx.merchant_name,
+        })),
+      );
+    } catch {
+      setTransactions([]);
+    }
+
+    // Fetch merchants from admin endpoint
+    try {
+      const merchResp = await fetchFromAPI(apiClient.admin.merchants);
+      const merchData: any[] = Array.isArray(merchResp) ? merchResp : merchResp.merchants || merchResp.data || [];
+      setMerchantRaw(merchData);
+      setMerchants(
+        merchData.slice(0, 5).map((m: any) => ({
+          id: m.id,
+          name: m.name || m.contact_name || "",
+          email: m.email || "",
+          businessName: m.business_name || m.businessName || "",
+          status: (m.status || "pending") as Merchant["status"],
+          totalVolume: (m.total_volume || 0) / 100,
+          currency: m.currency || "NGN",
+          joinedDate: m.created_at || "",
+        })),
+      );
+    } catch {
+      setMerchants([]);
+      setMerchantRaw([]);
+    }
+
+    // Fetch stats from admin endpoint
+    try {
+      const statsResp = await fetchFromAPI(`${API_BASE_URL}/admin/stats`);
+      const volumeInNaira = (statsResp.total_volume || 0) / 100;
+      setStats({
+        totalRevenue: `₦${(volumeInNaira / 1000000000).toFixed(1)}B`,
+        activeMerchants: statsResp.active_merchants || 0,
+        verifiedToday: statsResp.verified_today || 0,
+        pendingOnboarding: statsResp.pending_kyc || 0,
+        totalTransactions: statsResp.total_transactions || 0,
+        successRate: statsResp.success_rate || 0,
+      });
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      // Fetch transactions from admin endpoint
-      try {
-        const txResp = await fetchFromAPI(apiClient.admin.transactions);
-        const txData: any[] = Array.isArray(txResp) ? txResp : txResp.transactions || txResp.data || [];
-        setTransactions(
-          txData.slice(0, 5).map((tx: any) => ({
-            id: tx.id || tx.reference,
-            reference: tx.reference || tx.id,
-            customer: tx.customer_name || tx.customer || "Customer",
-            email: tx.customer_email || "",
-            amount: (tx.amount || 0) / 100,
-            currency: tx.currency || "NGN",
-            status: (tx.status || "pending") as Transaction["status"],
-            date: tx.created_at || "",
-            merchant: tx.merchant || tx.merchant_name,
-          })),
-        );
-      } catch {
-        setTransactions([]);
-      }
-
-      // Fetch merchants from admin endpoint
-      try {
-        const merchResp = await fetchFromAPI(apiClient.admin.merchants);
-        const merchData: any[] = Array.isArray(merchResp) ? merchResp : merchResp.merchants || merchResp.data || [];
-        setMerchants(
-          merchData.slice(0, 5).map((m: any) => ({
-            id: m.id,
-            name: m.name || m.contact_name || "",
-            email: m.email || "",
-            businessName: m.business_name || m.businessName || "",
-            status: (m.status || "pending") as Merchant["status"],
-            totalVolume: (m.total_volume || 0) / 100,
-            currency: m.currency || "NGN",
-            joinedDate: m.created_at || "",
-          })),
-        );
-      } catch {
-        setMerchants([]);
-      }
-
-      // Fetch stats from admin endpoint
-      try {
-        const statsResp = await fetchFromAPI(`${API_BASE_URL}/admin/stats`);
-        const volumeInNaira = (statsResp.total_volume || 0) / 100;
-        setStats({
-          totalRevenue: `₦${(volumeInNaira / 1000000000).toFixed(1)}B`,
-          activeMerchants: statsResp.active_merchants || 0,
-          verifiedToday: statsResp.verified_today || 0,
-          pendingOnboarding: statsResp.pending_kyc || 0,
-          totalTransactions: statsResp.total_transactions || 0,
-          successRate: statsResp.success_rate || 0,
-        });
-      } catch (err) {
-        console.error("Failed to fetch stats:", err);
-      }
-    };
-    load();
+    loadData();
   }, []);
 
   return (
@@ -168,11 +175,23 @@ export default function AdminDashboard() {
         <RevenueChart title="Platform Revenue Overview" />
       </div>
 
+      {/* Pending Approvals */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground">Pending Approvals</h2>
+          <Button variant="outline" size="sm" onClick={loadData}>
+            Refresh
+            <ArrowUpRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <PendingApprovals merchants={merchantRaw} onApprovalChange={loadData} />
+      </div>
+
       {/* Recent Merchants */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Recent Merchants</h2>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => navigate("/admin/merchants")}>
             View All
             <ArrowUpRight className="h-4 w-4" />
           </Button>
@@ -184,7 +203,7 @@ export default function AdminDashboard() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Recent Transactions</h2>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => navigate("/admin/transactions")}>
             View All
             <ArrowUpRight className="h-4 w-4" />
           </Button>

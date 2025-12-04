@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, ShieldCheck, Filter } from "lucide-react";
 
 type MerchantStatus = "active" | "pending" | "suspended" | "blocked";
+type KYCStatus = "pending" | "approved" | "rejected" | "not_started";
 
 type Merchant = {
   id: string;
@@ -17,123 +18,173 @@ type Merchant = {
   email: string;
   businessName: string;
   status: MerchantStatus;
+  kycStatus: KYCStatus; // Added kycStatus
   totalVolume: number;
   currency: string;
   joinedDate: string;
 };
 
-const merchants: Merchant[] = [
-  {
-    id: "mrc_001",
-    name: "Adebayo Ogundimu",
-    email: "adebayo@techstore.ng",
-    businessName: "TechStore NG",
-    status: "active" as const,
-    totalVolume: 45000000,
-    currency: "NGN",
-    joinedDate: "Oct 15, 2024",
-  },
-  {
-    id: "mrc_002",
-    name: "Chioma Eze",
-    email: "chioma@fashionhub.com",
-    businessName: "FashionHub",
-    status: "active" as const,
-    totalVolume: 28500000,
-    currency: "NGN",
-    joinedDate: "Sep 20, 2024",
-  },
-  {
-    id: "mrc_003",
-    name: "Emeka Nwosu",
-    email: "emeka@gadgetworld.ng",
-    businessName: "GadgetWorld",
-    status: "pending" as const,
-    totalVolume: 0,
-    currency: "NGN",
-    joinedDate: "Dec 1, 2024",
-  },
-  {
-    id: "mrc_004",
-    name: "Fatima Mohammed",
-    email: "fatima@luxurymart.com",
-    businessName: "LuxuryMart",
-    status: "active" as const,
-    totalVolume: 120000000,
-    currency: "NGN",
-    joinedDate: "Jun 5, 2024",
-  },
-];
 
-const onboardingQueue = [
-  { id: "kyc_101", business: "SwiftPay Ltd", stage: "Document review", sla: "4h" },
-  { id: "kyc_102", business: "Nova Rides", stage: "ID verification", sla: "6h" },
-  { id: "kyc_103", business: "DukaMarket", stage: "Business checks", sla: "2h" },
-];
+type OnboardingItem = {
+  id: string;
+  business: string;
+  stage: string;
+  sla: string;
+};
 
 export default function AdminMerchants() {
   const [merchantList, setMerchantList] = useState<Merchant[]>([]);
+  const [pendingMerchants, setPendingMerchants] = useState<Merchant[]>([]); // New state for pending
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    activeMerchants: 0,
+    verifiedToday: 0,
+    pendingOnboarding: 0,
+  });
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Fetch merchants from API
-    const fetchMerchants = async () => {
-      try {
-        const response = await fetch("http://localhost:7003/admin/merchants");
-        if (!response.ok) {
-          throw new Error("Failed to fetch merchants");
-        }
-        const data = await response.json();
+  const fetchMerchantsData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch all merchants (if still needed, otherwise remove)
+      // const allMerchantsResponse = await fetch("http://localhost:8000/admin/merchants");
+      // if (!allMerchantsResponse.ok) {
+      //   throw new Error("Failed to fetch all merchants");
+      // }
+      // const allMerchantsData = await allMerchantsResponse.json();
+      // const transformedAllMerchants = allMerchantsData.map((m: any) => ({
+      //   id: m.id,
+      //   name: m.name,
+      //   email: m.email,
+      //   businessName: m.business_name,
+      //   status: m.status as MerchantStatus,
+      //   kycStatus: m.kyc_status as KYCStatus,
+      //   totalVolume: m.total_volume || 0,
+      //   currency: "NGN",
+      //   joinedDate: new Date(m.created_at || Date.now()).toLocaleDateString("en-US", {
+      //     year: "numeric",
+      //     month: "short",
+      //     day: "numeric",
+      //   }),
+      // }));
+      // setMerchantList(transformedAllMerchants);
 
-        // Transform API response to match our Merchant type
-        const transformedData = data.map((m: any) => ({
-          id: m.id,
-          name: m.name,
-          email: m.email,
-          businessName: m.business_name,
-          status: m.status as MerchantStatus,
-          totalVolume: m.total_volume || 0, // From database aggregation
-          currency: "NGN",
-          joinedDate: new Date(m.created_at || Date.now()).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
-        }));
-
-        setMerchantList(transformedData);
-      } catch (error) {
-        console.error("Error fetching merchants:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load merchants from database",
-          variant: "destructive",
-        });
-        // Fallback to demo data if API fails
-        setMerchantList(merchants);
-      } finally {
-        setIsLoading(false);
+      // Fetch pending merchants
+      const pendingMerchantsResponse = await fetch(
+        "http://localhost:8000/admin/merchants/pending",
+      );
+      if (!pendingMerchantsResponse.ok) {
+        throw new Error("Failed to fetch pending merchants");
       }
-    };
+      const pendingMerchantsData = await pendingMerchantsResponse.json();
+      const transformedPendingMerchants = pendingMerchantsData.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        businessName: m.business_name,
+        status: m.status as MerchantStatus,
+        kycStatus: m.kyc_status as KYCStatus,
+        totalVolume: m.total_volume || 0,
+        currency: "NGN",
+        joinedDate: new Date(m.created_at || Date.now()).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
+      }));
+      setPendingMerchants(transformedPendingMerchants);
 
-    fetchMerchants();
+      // Fetch stats
+      const statsResponse = await fetch("http://localhost:8000/admin/stats");
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setStats({
+          activeMerchants: statsData.active_merchants || 0,
+          verifiedToday: statsData.verified_today || 0,
+          pendingOnboarding: statsData.pending_kyc || 0,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load data from database",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMerchantsData();
   }, [toast]);
 
-  const handleToggleStatus = (id: string, nextStatus: MerchantStatus) => {
-    setMerchantList((current) =>
-      current.map((merchant) =>
-        merchant.id === id ? { ...merchant, status: nextStatus } : merchant,
-      ),
-    );
+  const handleApproveMerchant = async (id: string) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/admin/merchants/${id}/approve`,
+        {
+          method: "POST",
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to approve merchant");
+      }
+      toast({
+        title: "Merchant Approved",
+        description: `Merchant ${id} has been approved.`,
+      });
+      fetchMerchantsData(); // Refresh list
+    } catch (error) {
+      console.error("Error approving merchant:", error);
+      toast({
+        title: "Error",
+        description: "Failed to approve merchant",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectMerchant = async (id: string) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/admin/merchants/${id}/reject`,
+        {
+          method: "POST",
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to reject merchant");
+      }
+      toast({
+        title: "Merchant Rejected",
+        description: `Merchant ${id} has been rejected.`,
+      });
+      fetchMerchantsData(); // Refresh list
+    } catch (error) {
+      console.error("Error rejecting merchant:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reject merchant",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddMerchant = () => {
     toast({
-      title: nextStatus === "blocked" ? "Merchant blocked" : "Merchant unblocked",
-      description:
-        nextStatus === "blocked"
-          ? "This merchant can no longer process payments."
-          : "Merchant access has been restored.",
+      title: "Coming Soon",
+      description: "Manual merchant creation will be available in the next release.",
     });
   };
+
+  const onboardingQueue = pendingMerchants.map((m: Merchant, idx: number) => ({
+    id: m.id,
+    business: m.businessName,
+    stage: "KYC Review",
+    sla: `${2 + idx * 2}h`,
+  }));
 
   return (
     <DashboardLayout type="admin" title="Merchants">
@@ -144,7 +195,7 @@ export default function AdminMerchants() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Active merchants</p>
-            <p className="text-xl font-semibold text-foreground">1,234</p>
+            <p className="text-xl font-semibold text-foreground">{stats.activeMerchants}</p>
           </div>
         </Card>
         <Card className="p-5 flex items-center gap-3">
@@ -153,7 +204,7 @@ export default function AdminMerchants() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Verified today</p>
-            <p className="text-xl font-semibold text-foreground">38</p>
+            <p className="text-xl font-semibold text-foreground">{stats.verifiedToday}</p>
           </div>
         </Card>
         <Card className="p-5 flex items-center gap-3">
@@ -162,7 +213,7 @@ export default function AdminMerchants() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Pending onboarding</p>
-            <p className="text-xl font-semibold text-foreground">12</p>
+            <p className="text-xl font-semibold text-foreground">{stats.pendingOnboarding}</p>
           </div>
         </Card>
       </div>
@@ -176,7 +227,7 @@ export default function AdminMerchants() {
               Filters
             </Button>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={handleAddMerchant}>
             <UserPlus className="h-4 w-4" />
             Add Merchant
           </Button>
@@ -190,7 +241,11 @@ export default function AdminMerchants() {
               <p className="text-muted-foreground">Loading merchants from database...</p>
             </Card>
           ) : (
-            <MerchantTable merchants={merchantList} onToggleStatus={handleToggleStatus} />
+            <MerchantTable
+              merchants={pendingMerchants} // Display pending merchants here
+              onApprove={handleApproveMerchant}
+              onReject={handleRejectMerchant}
+            />
           )}
         </div>
 
