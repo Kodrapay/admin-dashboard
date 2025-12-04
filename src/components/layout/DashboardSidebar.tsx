@@ -3,11 +3,9 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
-  CreditCard,
   Settings,
   BarChart3,
   Shield,
-  Key,
   LogOut,
   Wallet,
   ArrowLeftRight,
@@ -28,9 +26,13 @@ const adminLinks = [
 
 const merchantLinks = [
   { href: "/merchant", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/merchant/transactions", icon: ArrowLeftRight, label: "Transactions" },
+  {
+    href: "/merchant/transactions",
+    icon: ArrowLeftRight,
+    label: "Transactions",
+  },
+  { href: "/merchant/payment-links", icon: FileText, label: "Payment Links" },
   { href: "/merchant/payouts", icon: Wallet, label: "Payouts" },
-  { href: "/merchant/api-keys", icon: Key, label: "API Keys" },
   { href: "/merchant/settings", icon: Settings, label: "Settings" },
 ];
 
@@ -46,7 +48,9 @@ export function DashboardSidebar({ type }: SidebarProps) {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
             <Shield className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-lg font-bold text-sidebar-foreground">PayFlow</span>
+          <span className="text-lg font-bold text-sidebar-foreground">
+            KodraPay
+          </span>
           <span className="ml-auto rounded-md bg-sidebar-accent px-2 py-0.5 text-xs font-medium text-sidebar-primary">
             {type === "admin" ? "Admin" : "Merchant"}
           </span>
@@ -55,7 +59,7 @@ export function DashboardSidebar({ type }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
           {links.map((link) => {
-            const isActive = location.pathname === link.href;
+            const isActive = location.pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}
@@ -64,7 +68,7 @@ export function DashboardSidebar({ type }: SidebarProps) {
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
                     ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 )}
               >
                 <link.icon className="h-5 w-5" />

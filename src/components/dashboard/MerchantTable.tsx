@@ -16,7 +16,7 @@ interface Merchant {
   name: string;
   email: string;
   businessName: string;
-  status: "active" | "pending" | "suspended";
+  status: "active" | "pending" | "suspended" | "blocked";
   totalVolume: number;
   currency: string;
   joinedDate: string;
@@ -24,15 +24,17 @@ interface Merchant {
 
 interface MerchantTableProps {
   merchants: Merchant[];
+  onToggleStatus?: (id: string, nextStatus: Merchant["status"]) => void;
 }
 
 const statusStyles = {
   active: "bg-success/10 text-success border-success/20",
   pending: "bg-warning/10 text-warning border-warning/20",
   suspended: "bg-destructive/10 text-destructive border-destructive/20",
+  blocked: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
-export function MerchantTable({ merchants }: MerchantTableProps) {
+export function MerchantTable({ merchants, onToggleStatus }: MerchantTableProps) {
   const formatAmount = (amount: number, currency: string) => {
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
@@ -50,7 +52,7 @@ export function MerchantTable({ merchants }: MerchantTableProps) {
             <TableHead className="font-semibold">Total Volume</TableHead>
             <TableHead className="font-semibold">Status</TableHead>
             <TableHead className="font-semibold">Joined</TableHead>
-            <TableHead className="font-semibold w-[100px]">Actions</TableHead>
+            <TableHead className="font-semibold w-[140px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -90,6 +92,19 @@ export function MerchantTable({ merchants }: MerchantTableProps) {
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={merchant.status === "blocked" ? "secondary" : "destructive"}
+                    size="sm"
+                    className="h-8"
+                    onClick={() =>
+                      onToggleStatus?.(
+                        merchant.id,
+                        merchant.status === "blocked" ? "active" : "blocked",
+                      )
+                    }
+                  >
+                    {merchant.status === "blocked" ? "Unblock" : "Block"}
                   </Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreHorizontal className="h-4 w-4" />

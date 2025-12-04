@@ -186,7 +186,7 @@ export function CheckoutForm({
       <div className="flex items-center justify-center gap-2 pt-4 border-t border-border">
         <Shield className="h-4 w-4 text-success" />
         <span className="text-xs text-muted-foreground">
-          Secured by PayFlow • 256-bit SSL encryption
+          Secured by KodraPay • 256-bit SSL encryption
         </span>
       </div>
     </div>

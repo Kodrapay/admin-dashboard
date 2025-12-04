@@ -21,15 +21,28 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install a simple HTTP server to serve static files
-RUN npm install -g serve
-
 # Copy built app from builder
 COPY --from=builder /app/dist ./dist
 
+# Install express
+RUN npm install express
+
+# Create server.js
+RUN cat > server.js << 'EOF'
+const express = require('express');
+const path = require('path');
+const app = express();
+
+app.use(express.static('dist'));
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+app.listen(5173, () => {
+  console.log('Server running on port 5173');
+});
+EOF
+
 EXPOSE 5173
 
-# Set environment variable for API
-ENV VITE_API_BASE_URL=http://api-gateway:7000
-
-CMD ["serve", "-s", "dist", "-l", "5173"]
+CMD ["node", "server.js"]

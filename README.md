@@ -91,7 +91,14 @@ admin-dashboard/
 ## Available Routes
 
 - `/` - Home page
-- `/dashboard` - Admin dashboard
+- `/checkout` - Demo checkout experience
+- `/admin/login` - Admin authentication
+- `/dashboard` - Admin dashboard (alias of `/admin`)
+- `/admin` - Overview dashboard
+- `/admin/merchants` - Merchant directory and onboarding queue
+- `/admin/transactions` - Platform transactions view
+- `/admin/analytics` - Revenue and performance analytics
+- `/admin/settings` - Admin settings and credentials
 - `*` - 404 Not Found
 
 ## Technologies
