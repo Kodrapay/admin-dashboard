@@ -1,6 +1,6 @@
 // Admin Dashboard API Client Configuration
 // All requests flow through the API Gateway
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:7000";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:7000";
 
 export const apiClient = {
   // Auth Service (Port 7001)
