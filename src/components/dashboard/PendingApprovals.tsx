@@ -1,0 +1,225 @@
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Building2,
+  Mail,
+  MapPin,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock,
+  FileText
+} from "lucide-react";
+import { API_BASE_URL } from "@/lib/api-client";
+
+type PendingMerchant = {
+  id: string;
+  name: string;
+  email: string;
+  business_name: string;
+  country: string;
+  kyc_status: string;
+  status: string;
+  created_at: string;
+  total_volume?: number;
+  transaction_count?: number;
+};
+
+type PendingApprovalsProps = {
+  merchants: PendingMerchant[];
+  onApprovalChange: () => void;
+};
+
+export function PendingApprovals({ merchants, onApprovalChange }: PendingApprovalsProps) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [viewingDocs, setViewingDocs] = useState<string | null>(null);
+
+  const pendingMerchants = merchants.filter(
+    m => m.kyc_status === 'pending' || m.status === 'pending'
+  );
+
+  const handleApprove = async (merchantId: string) => {
+    setLoading(merchantId);
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${API_BASE_URL}/admin/merchants/${merchantId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Approval failed');
+
+      onApprovalChange();
+    } catch (error) {
+      console.error('Failed to approve merchant:', error);
+      alert('Failed to approve merchant');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleReject = async (merchantId: string) => {
+    const reason = prompt('Enter rejection reason (optional):');
+    setLoading(merchantId);
+
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${API_BASE_URL}/admin/merchants/${merchantId}/suspend`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!response.ok) throw new Error('Rejection failed');
+
+      onApprovalChange();
+    } catch (error) {
+      console.error('Failed to reject merchant:', error);
+      alert('Failed to reject merchant');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleViewDocs = (merchantId: string) => {
+    setViewingDocs(viewingDocs === merchantId ? null : merchantId);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  if (pendingMerchants.length === 0) {
+    return (
+      <Card className="p-6 text-center">
+        <CheckCircle className="h-12 w-12 text-success mx-auto mb-3 opacity-50" />
+        <p className="text-muted-foreground">No pending approvals at this time</p>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      {pendingMerchants.map((merchant) => (
+        <Card key={merchant.id} className="p-6 border-l-4 border-l-warning">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h3 className="text-lg font-semibold">{merchant.business_name}</h3>
+                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Pending Review
+                </Badge>
+              </div>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  <span>Contact: {merchant.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  <span>{merchant.email}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  <span>{merchant.country}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Submitted: {formatDate(merchant.created_at)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleViewDocs(merchant.id)}
+                disabled={loading === merchant.id}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => handleApprove(merchant.id)}
+                disabled={loading === merchant.id}
+                className="bg-success hover:bg-success/90"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {loading === merchant.id ? 'Processing...' : 'Approve'}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleReject(merchant.id)}
+                disabled={loading === merchant.id}
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Reject
+              </Button>
+            </div>
+          </div>
+
+          {viewingDocs === merchant.id && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="bg-muted/50 rounded-lg p-4">
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Business Documents & Information
+                </h4>
+                <div className="grid gap-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Business Name:</span>
+                    <span className="font-medium">{merchant.business_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Registration Country:</span>
+                    <span className="font-medium">{merchant.country}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Contact Person:</span>
+                    <span className="font-medium">{merchant.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Email:</span>
+                    <span className="font-medium">{merchant.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">KYC Status:</span>
+                    <Badge variant="outline">{merchant.kyc_status}</Badge>
+                  </div>
+                  {merchant.total_volume && merchant.total_volume > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Test Transactions:</span>
+                      <span className="font-medium">
+                        {merchant.transaction_count} txns (₦{(merchant.total_volume / 100).toFixed(2)})
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 p-2 bg-background rounded border">
+                  Note: In production, this would show uploaded KYC documents (Business Registration, Tax ID, Director IDs, etc.)
+                </p>
+              </div>
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}

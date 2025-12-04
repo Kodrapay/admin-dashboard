@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/lib/api-client";
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -20,15 +21,33 @@ export default function AdminLogin() {
     event.preventDefault();
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      localStorage.setItem("authToken", "demo-admin-token");
-      setIsSubmitting(false);
-      toast({
-        title: "Welcome back",
-        description: "You are now signed in to the admin dashboard.",
-      });
-      navigate("/admin");
-    }, 600);
+    fetch(`${API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error("Invalid credentials");
+        }
+        const data = await res.json();
+        const token = data.token || data.access_token;
+        if (!token) throw new Error("No token returned");
+        localStorage.setItem("authToken", token);
+        toast({
+          title: "Welcome back",
+          description: "You are now signed in to the admin dashboard.",
+        });
+        navigate("/admin");
+      })
+      .catch((err) => {
+        toast({
+          title: "Login failed",
+          description: err.message || "Please check your credentials.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => setIsSubmitting(false));
   };
 
   return (

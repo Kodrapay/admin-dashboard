@@ -4,6 +4,8 @@ import { TransactionTable } from "@/components/dashboard/TransactionTable";
 import { MerchantTable } from "@/components/dashboard/MerchantTable";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { API_BASE_URL, apiClient, fetchFromAPI } from "@/lib/api-client";
 import {
   DollarSign,
   Users,
@@ -13,116 +15,120 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-const recentTransactions = [
-  {
-    id: "1",
-    reference: "TXN_001234567",
-    customer: "John Doe",
-    email: "john@example.com",
-    amount: 125000,
-    currency: "NGN",
-    status: "successful" as const,
-    date: "Dec 3, 2024",
-    merchant: "TechStore NG",
-  },
-  {
-    id: "2",
-    reference: "TXN_001234568",
-    customer: "Jane Smith",
-    email: "jane@example.com",
-    amount: 45000,
-    currency: "NGN",
-    status: "successful" as const,
-    date: "Dec 3, 2024",
-    merchant: "FashionHub",
-  },
-  {
-    id: "3",
-    reference: "TXN_001234569",
-    customer: "Mike Johnson",
-    email: "mike@example.com",
-    amount: 89500,
-    currency: "NGN",
-    status: "pending" as const,
-    date: "Dec 3, 2024",
-    merchant: "GadgetWorld",
-  },
-  {
-    id: "4",
-    reference: "TXN_001234570",
-    customer: "Sarah Williams",
-    email: "sarah@example.com",
-    amount: 250000,
-    currency: "NGN",
-    status: "successful" as const,
-    date: "Dec 2, 2024",
-    merchant: "LuxuryMart",
-  },
-  {
-    id: "5",
-    reference: "TXN_001234571",
-    customer: "David Brown",
-    email: "david@example.com",
-    amount: 15000,
-    currency: "NGN",
-    status: "failed" as const,
-    date: "Dec 2, 2024",
-    merchant: "QuickShop",
-  },
-];
+type Transaction = {
+  id: string;
+  reference: string;
+  customer: string;
+  email: string;
+  amount: number;
+  currency: string;
+  status: "successful" | "pending" | "failed";
+  date: string;
+  merchant?: string;
+};
 
-const recentMerchants = [
-  {
-    id: "1",
-    name: "Adebayo Ogundimu",
-    email: "adebayo@techstore.ng",
-    businessName: "TechStore NG",
-    status: "active" as const,
-    totalVolume: 45000000,
-    currency: "NGN",
-    joinedDate: "Oct 15, 2024",
-  },
-  {
-    id: "2",
-    name: "Chioma Eze",
-    email: "chioma@fashionhub.com",
-    businessName: "FashionHub",
-    status: "active" as const,
-    totalVolume: 28500000,
-    currency: "NGN",
-    joinedDate: "Sep 20, 2024",
-  },
-  {
-    id: "3",
-    name: "Emeka Nwosu",
-    email: "emeka@gadgetworld.ng",
-    businessName: "GadgetWorld",
-    status: "pending" as const,
-    totalVolume: 0,
-    currency: "NGN",
-    joinedDate: "Dec 1, 2024",
-  },
-  {
-    id: "4",
-    name: "Fatima Mohammed",
-    email: "fatima@luxurymart.com",
-    businessName: "LuxuryMart",
-    status: "active" as const,
-    totalVolume: 120000000,
-    currency: "NGN",
-    joinedDate: "Jun 5, 2024",
-  },
-];
+type Merchant = {
+  id: string;
+  name: string;
+  email: string;
+  businessName: string;
+  status: "active" | "pending" | "suspended" | "blocked";
+  totalVolume: number;
+  currency: string;
+  joinedDate: string;
+};
+
+type DashboardStats = {
+  totalRevenue: string;
+  activeMerchants: number;
+  verifiedToday: number;
+  pendingOnboarding: number;
+  totalTransactions: number;
+  successRate: number;
+};
 
 export default function AdminDashboard() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalRevenue: "₦0",
+    activeMerchants: 0,
+    verifiedToday: 0,
+    pendingOnboarding: 0,
+    totalTransactions: 0,
+    successRate: 0,
+  });
+
+  useEffect(() => {
+    const load = async () => {
+      // Fetch transactions from admin endpoint
+      try {
+        const txResp = await fetchFromAPI(apiClient.admin.transactions);
+        const txData: any[] = Array.isArray(txResp) ? txResp : txResp.transactions || txResp.data || [];
+        setTransactions(
+          txData.slice(0, 5).map((tx: any) => ({
+            id: tx.id || tx.reference,
+            reference: tx.reference || tx.id,
+            customer: tx.customer_name || tx.customer || "Customer",
+            email: tx.customer_email || "",
+            amount: (tx.amount || 0) / 100,
+            currency: tx.currency || "NGN",
+            status: (tx.status || "pending") as Transaction["status"],
+            date: tx.created_at || "",
+            merchant: tx.merchant || tx.merchant_name,
+          })),
+        );
+      } catch {
+        setTransactions([]);
+      }
+
+      // Fetch merchants from admin endpoint
+      try {
+        const merchResp = await fetchFromAPI(apiClient.admin.merchants);
+        const merchData: any[] = Array.isArray(merchResp) ? merchResp : merchResp.merchants || merchResp.data || [];
+        setMerchants(
+          merchData.slice(0, 5).map((m: any) => ({
+            id: m.id,
+            name: m.name || m.contact_name || "",
+            email: m.email || "",
+            businessName: m.business_name || m.businessName || "",
+            status: (m.status || "pending") as Merchant["status"],
+            totalVolume: (m.total_volume || 0) / 100,
+            currency: m.currency || "NGN",
+            joinedDate: m.created_at || "",
+          })),
+        );
+      } catch {
+        setMerchants([]);
+      }
+
+      // Fetch stats from admin endpoint
+      try {
+        const statsResp = await fetchFromAPI(`${API_BASE_URL}/admin/stats`);
+        const volumeInNaira = (statsResp.total_volume || 0) / 100;
+        setStats({
+          totalRevenue: `₦${(volumeInNaira / 1000000000).toFixed(1)}B`,
+          activeMerchants: statsResp.active_merchants || 0,
+          verifiedToday: statsResp.verified_today || 0,
+          pendingOnboarding: statsResp.pending_kyc || 0,
+          totalTransactions: statsResp.total_transactions || 0,
+          successRate: statsResp.success_rate || 0,
+        });
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      }
+    };
+    load();
+  }, []);
+
   return (
     <DashboardLayout type="admin" title="Admin Dashboard">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatsCard
           title="Total Revenue"
-          value="₦2.5B"
-          change="+12.5% from last month"
+          value={stats.totalRevenue}
+          change={`₦${((stats.totalTransactions * 4167) / 100).toFixed(2)} avg per txn`}
           changeType="positive"
           icon={DollarSign}
           iconColor="bg-success/10 text-success"
@@ -130,17 +136,17 @@ export default function AdminDashboard() {
         />
         <StatsCard
           title="Active Merchants"
-          value="1,234"
-          change="+48 new this month"
-          changeType="positive"
+          value={stats.activeMerchants.toString()}
+          change={`${stats.pendingOnboarding} pending onboarding`}
+          changeType={stats.pendingOnboarding > 0 ? "positive" : "neutral"}
           icon={Users}
           iconColor="bg-primary/10 text-primary"
           delay={100}
         />
         <StatsCard
           title="Transactions"
-          value="45.2K"
-          change="+8.3% from last month"
+          value={stats.totalTransactions.toLocaleString()}
+          change={`${((stats.totalTransactions / 30) || 0).toFixed(0)} per day avg`}
           changeType="positive"
           icon={CreditCard}
           iconColor="bg-warning/10 text-warning"
@@ -148,9 +154,9 @@ export default function AdminDashboard() {
         />
         <StatsCard
           title="Success Rate"
-          value="98.7%"
-          change="-0.2% from last month"
-          changeType="negative"
+          value={`${stats.successRate.toFixed(1)}%`}
+          change={stats.successRate >= 90 ? "Excellent performance" : "Needs attention"}
+          changeType={stats.successRate >= 90 ? "positive" : "negative"}
           icon={TrendingUp}
           iconColor="bg-accent text-accent-foreground"
           delay={300}
@@ -171,7 +177,7 @@ export default function AdminDashboard() {
             <ArrowUpRight className="h-4 w-4" />
           </Button>
         </div>
-        <MerchantTable merchants={recentMerchants} />
+        <MerchantTable merchants={merchants} />
       </div>
 
       {/* Recent Transactions */}
@@ -183,7 +189,7 @@ export default function AdminDashboard() {
             <ArrowUpRight className="h-4 w-4" />
           </Button>
         </div>
-        <TransactionTable transactions={recentTransactions} showMerchant />
+        <TransactionTable transactions={transactions} showMerchant />
       </div>
     </DashboardLayout>
   );

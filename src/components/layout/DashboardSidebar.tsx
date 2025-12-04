@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -38,7 +38,14 @@ const merchantLinks = [
 
 export function DashboardSidebar({ type }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const links = type === "admin" ? adminLinks : merchantLinks;
+
+  const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("merchantUser");
+    navigate("/");
+  };
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
@@ -80,13 +87,13 @@ export function DashboardSidebar({ type }: SidebarProps) {
 
         {/* Footer */}
         <div className="border-t border-sidebar-border p-3">
-          <Link
-            to="/"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
           >
             <LogOut className="h-5 w-5" />
             Exit Dashboard
-          </Link>
+          </button>
         </div>
       </div>
     </aside>
