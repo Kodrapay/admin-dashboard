@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { MerchantTable } from "@/components/dashboard/MerchantTable";
 import { Button } from "@/components/ui/button";
@@ -72,8 +72,53 @@ const onboardingQueue = [
 ];
 
 export default function AdminMerchants() {
-  const [merchantList, setMerchantList] = useState<Merchant[]>(merchants);
+  const [merchantList, setMerchantList] = useState<Merchant[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Fetch merchants from API
+    const fetchMerchants = async () => {
+      try {
+        const response = await fetch("http://localhost:7003/admin/merchants");
+        if (!response.ok) {
+          throw new Error("Failed to fetch merchants");
+        }
+        const data = await response.json();
+
+        // Transform API response to match our Merchant type
+        const transformedData = data.map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          email: m.email,
+          businessName: m.business_name,
+          status: m.status as MerchantStatus,
+          totalVolume: m.total_volume || 0, // From database aggregation
+          currency: "NGN",
+          joinedDate: new Date(m.created_at || Date.now()).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
+        }));
+
+        setMerchantList(transformedData);
+      } catch (error) {
+        console.error("Error fetching merchants:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load merchants from database",
+          variant: "destructive",
+        });
+        // Fallback to demo data if API fails
+        setMerchantList(merchants);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMerchants();
+  }, [toast]);
 
   const handleToggleStatus = (id: string, nextStatus: MerchantStatus) => {
     setMerchantList((current) =>
@@ -140,7 +185,13 @@ export default function AdminMerchants() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <MerchantTable merchants={merchantList} onToggleStatus={handleToggleStatus} />
+          {isLoading ? (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">Loading merchants from database...</p>
+            </Card>
+          ) : (
+            <MerchantTable merchants={merchantList} onToggleStatus={handleToggleStatus} />
+          )}
         </div>
 
         <Card className="p-5">
