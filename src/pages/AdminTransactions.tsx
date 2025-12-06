@@ -57,7 +57,7 @@ export default function AdminTransactions() {
             email: tx.customer_email || "",
             amount: (tx.amount || 0) / 100,
             currency: tx.currency || "NGN",
-            status: (tx.status || "pending") as Transaction["status"],
+            status: (tx.status === "success" ? "successful" : tx.status || "pending") as Transaction["status"],
             date: new Date(tx.created_at || Date.now()).toLocaleDateString("en-US", {
               year: "numeric",
               month: "short",

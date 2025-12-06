@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/lib/api-client";
+import { setSessionCookie } from "@/lib/session";
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -31,14 +32,24 @@ export default function AdminLogin() {
           throw new Error("Invalid credentials");
         }
         const data = await res.json();
+
+        // Store session ID in cookie
+        const sessionId = data.session_id;
+        if (sessionId) {
+          setSessionCookie(sessionId, 1); // 1 day expiry
+        }
+
+        // Keep token for backward compatibility
         const token = data.token || data.access_token;
-        if (!token) throw new Error("No token returned");
-        localStorage.setItem("authToken", token);
+        if (token) {
+          localStorage.setItem("authToken", token);
+        }
+
         toast({
           title: "Welcome back",
           description: "You are now signed in to the admin dashboard.",
         });
-        navigate("/admin");
+        navigate("/admin/dashboard");
       })
       .catch((err) => {
         toast({
