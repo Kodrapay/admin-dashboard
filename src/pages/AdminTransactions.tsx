@@ -67,7 +67,7 @@ export default function AdminTransactions() {
           reference: tx.reference ?? tx.id ?? `txn-${idx}`,
           customer: tx.customer_name || tx.customer || "Customer",
           email: tx.customer_email || "",
-          amount: (tx.amount || 0) / 100,
+          amount: tx.amount || 0,
           currency: tx.currency || "NGN",
           status: normalizeStatus(tx.status),
           date: new Date(tx.created_at || Date.now()).toLocaleDateString("en-US", {

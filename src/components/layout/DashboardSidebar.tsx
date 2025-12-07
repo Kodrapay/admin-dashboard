@@ -21,6 +21,7 @@ const adminLinks = [
   { href: "/admin/merchants", icon: Users, label: "Merchants" },
   { href: "/admin/transactions", icon: ArrowLeftRight, label: "Transactions" },
   { href: "/admin/analytics", icon: BarChart3, label: "Analytics" },
+  { href: "/admin/fraud", icon: Shield, label: "Fraud" },
   { href: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 
