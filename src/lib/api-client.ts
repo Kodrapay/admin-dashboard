@@ -22,14 +22,14 @@ export const apiClient = {
   // Transaction Service (Port 7004)
   transactions: {
     list: `${API_BASE_URL}/transactions`,
-    get: (id: string) => `${API_BASE_URL}/transactions/${id}`,
+    get: (id: number) => `${API_BASE_URL}/transactions/${id}`,
     search: `${API_BASE_URL}/transactions/search`,
   },
 
   // Merchant Service (Port 7002)
   merchants: {
     list: `${API_BASE_URL}/merchants`,
-    get: (id: string) => `${API_BASE_URL}/merchants/${id}`,
+    get: (id: number) => `${API_BASE_URL}/merchants/${id}`,
     profile: `${API_BASE_URL}/merchants/profile`,
     settings: `${API_BASE_URL}/merchants/settings`,
   },
@@ -51,15 +51,15 @@ export const apiClient = {
   // Dispute Service (Port 7013)
   disputes: {
     list: `${API_BASE_URL}/disputes`,
-    get: (id: string) => `${API_BASE_URL}/disputes/${id}`,
+    get: (id: number) => `${API_BASE_URL}/disputes/${id}`,
     resolve: `${API_BASE_URL}/disputes/resolve`,
   },
 
   // Settlement Service (Port 7008)
   settlement: {
     list: `${API_BASE_URL}/settlements`,
-    get: (id: string) => `${API_BASE_URL}/settlements/${id}`,
-    reconcile: `${API_BASE_URL}/settlements/reconcile`,
+    get: (id: number) => `${API_BASE_URL}/settlements/${id}`,
+    reconcile: `${API_BASE_URL}/settlement/reconcile`, // This line needs to be corrected
   },
 
   // Fee Service (Port 7017)
@@ -91,5 +91,16 @@ export async function fetchFromAPI(url: string, options: RequestInit = {}) {
     throw new Error(`API request failed: ${response.statusText}`);
   }
 
-  return response.json();
+  // Gracefully handle endpoints that return no body
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Fallback to raw text if JSON parsing fails
+    return text as unknown;
+  }
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,13 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  FileText
+  FileText,
 } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-client";
+import { API_BASE_URL, fetchFromAPI } from "@/lib/api-client";
+import { useToast } from "@/hooks/use-toast";
 
 type PendingMerchant = {
-  id: string;
+  id: number;
   name: string;
   email: string;
   business_name: string;
@@ -33,72 +34,74 @@ type PendingApprovalsProps = {
 };
 
 export function PendingApprovals({ merchants, onApprovalChange }: PendingApprovalsProps) {
-  const [loading, setLoading] = useState<string | null>(null);
-  const [viewingDocs, setViewingDocs] = useState<string | null>(null);
+  const [pendingMerchants, setPendingMerchants] = useState<PendingMerchant[]>([]);
+  const [loading, setLoading] = useState<number | null>(null);
+  const [viewingDocs, setViewingDocs] = useState<number | null>(null);
+  const { toast } = useToast();
 
-  const pendingMerchants = merchants.filter(
-    m => m.kyc_status === 'pending' || m.status === 'pending'
-  );
-
-  const handleApprove = async (merchantId: string) => {
-    setLoading(merchantId);
-    try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(`${API_BASE_URL}/admin/merchants/${merchantId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) throw new Error('Approval failed');
-
-      onApprovalChange();
-    } catch (error) {
-      console.error('Failed to approve merchant:', error);
-      alert('Failed to approve merchant');
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleReject = async (merchantId: string) => {
-    const reason = prompt('Enter rejection reason (optional):');
-    setLoading(merchantId);
-
-    try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(`${API_BASE_URL}/admin/merchants/${merchantId}/suspend`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reason }),
-      });
-
-      if (!response.ok) throw new Error('Rejection failed');
-
-      onApprovalChange();
-    } catch (error) {
-      console.error('Failed to reject merchant:', error);
-      alert('Failed to reject merchant');
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleViewDocs = (merchantId: string) => {
-    setViewingDocs(viewingDocs === merchantId ? null : merchantId);
-  };
+  useEffect(() => {
+    const filtered = (merchants || []).filter(
+      (m) =>
+        m.kyc_status === "pending" ||
+        m.kyc_status === "not_started" ||
+        m.status === "pending" ||
+        m.status === "inactive",
+    );
+    setPendingMerchants(filtered);
+  }, [merchants]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
+  };
+
+  const handleApprove = async (merchantId: number) => {
+    setLoading(merchantId);
+    try {
+      await fetchFromAPI(`${API_BASE_URL}/admin/merchants/${merchantId}/approve`, {
+        method: "POST",
+      });
+      setPendingMerchants((prev) => prev.filter((m) => m.id !== merchantId));
+      onApprovalChange?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to approve merchant";
+      console.error("Error approving merchant", error);
+      toast({
+        title: "Could not approve merchant",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleReject = async (merchantId: number) => {
+    setLoading(merchantId);
+    try {
+      await fetchFromAPI(`${API_BASE_URL}/admin/merchants/${merchantId}/reject`, {
+        method: "POST",
+      });
+      setPendingMerchants((prev) => prev.filter((m) => m.id !== merchantId));
+      onApprovalChange?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to reject merchant";
+      console.error("Error rejecting merchant", error);
+      toast({
+        title: "Could not reject merchant",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleViewDocs = (merchantId: number) => {
+    setViewingDocs((current) => (current === merchantId ? null : merchantId));
   };
 
   if (pendingMerchants.length === 0) {
@@ -161,7 +164,7 @@ export function PendingApprovals({ merchants, onApprovalChange }: PendingApprova
                 className="bg-success hover:bg-success/90"
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
-                {loading === merchant.id ? 'Processing...' : 'Approve'}
+                {loading === merchant.id ? "Processing..." : "Approve"}
               </Button>
               <Button
                 variant="destructive"
@@ -180,7 +183,7 @@ export function PendingApprovals({ merchants, onApprovalChange }: PendingApprova
               <div className="bg-muted/50 rounded-lg p-4">
                 <h4 className="font-semibold mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Business Documents & Information
+                  Business Documents &amp; Information
                 </h4>
                 <div className="grid gap-3 text-sm">
                   <div className="flex justify-between">

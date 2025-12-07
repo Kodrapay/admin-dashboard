@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getSessionCookie, validateSession } from "@/lib/session";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import { API_BASE_URL } from "@/lib/api-client";
 
 interface Notification {
   id: string;
@@ -18,14 +17,20 @@ const fetchNotifications = async (): Promise<Notification[]> => {
     return [];
   }
 
-  const response = await fetch(`${API_URL}/notifications/user/${userId}`);
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw new Error(errorText || "Failed to fetch notifications");
-  }
+  try {
+    const response = await fetch(`${API_BASE_URL}/notifications/user/${userId}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      console.error("Notifications fetch failed:", errorText || response.statusText);
+      return [];
+    }
 
-  const data = await response.json();
-  return data.notifications;
+    const data = await response.json();
+    return data.notifications || [];
+  } catch (error) {
+    console.error("Notifications fetch error:", error);
+    return [];
+  }
 };
 
 export const useNotifications = () => {

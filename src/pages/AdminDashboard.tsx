@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 
 type Transaction = {
-  id: string;
-  reference: string;
+  id: string | number;
+  reference: string | number;
   customer: string;
   email: string;
   amount: number;
@@ -27,10 +27,11 @@ type Transaction = {
   status: "successful" | "pending" | "failed";
   date: string;
   merchant?: string;
+  type?: string;
 };
 
 type Merchant = {
-  id: string;
+  id: number;
   name: string;
   email: string;
   businessName: string;
@@ -65,42 +66,59 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true); // Initialize to true
   const [isError, setIsError] = useState(false);
 
+  const normalizeStatus = (status?: string): Transaction["status"] => {
+    const value = (status || "").toLowerCase();
+    if (value === "success" || value === "successful" || value === "completed" || value === "paid") {
+      return "successful";
+    }
+    if (value === "failed" || value === "error") {
+      return "failed";
+    }
+    return "pending";
+  };
+
   const loadData = async () => {
     setIsLoading(true);
     setIsError(false); // Reset error state on new load attempt
     try {
       // Fetch transactions from admin endpoint
       const txResp = await fetchFromAPI(apiClient.admin.transactions);
-      const txData: any[] = Array.isArray(txResp) ? txResp : txResp.transactions || txResp.data || [];
+      const txRaw: any[] = Array.isArray(txResp) ? txResp : txResp?.transactions || txResp?.data || [];
+      const txData: any[] = Array.isArray(txRaw) ? txRaw : [];
       setTransactions(
-        txData.slice(0, 5).map((tx: any) => ({
-          id: tx.id || tx.reference,
-          reference: tx.reference || tx.id,
+        txData.slice(0, 5).map((tx: any, idx: number) => ({
+          id: tx.id ?? tx.reference ?? idx,
+          reference: tx.reference ?? tx.id ?? `txn-${idx}`,
           customer: tx.customer_name || tx.customer || "Customer",
           email: tx.customer_email || "",
           amount: (tx.amount || 0) / 100,
           currency: tx.currency || "NGN",
-          status: (tx.status || "pending") as Transaction["status"],
+          status: normalizeStatus(tx.status),
           date: tx.created_at || "",
           merchant: tx.merchant || tx.merchant_name,
+          type: tx.type || tx.payment_method || "payment",
         })),
       );
 
       // Fetch merchants from admin endpoint
       const merchResp = await fetchFromAPI(apiClient.admin.merchants);
-      const merchData: any[] = Array.isArray(merchResp) ? merchResp : merchResp.merchants || merchResp.data || [];
+      const merchRaw: any[] = Array.isArray(merchResp) ? merchResp : merchResp?.merchants || merchResp?.data || [];
+      const merchData: any[] = Array.isArray(merchRaw) ? merchRaw : [];
       setMerchantRaw(merchData);
       setMerchants(
-        merchData.slice(0, 5).map((m: any) => ({
-          id: m.id,
-          name: m.name || m.contact_name || "",
-          email: m.email || "",
-          businessName: m.business_name || m.businessName || "",
-          status: (m.status || "pending") as Merchant["status"],
-          totalVolume: (m.total_volume || 0) / 100,
-          currency: m.currency || "NGN",
-          joinedDate: m.created_at || "",
-        })),
+        merchData.slice(0, 5).map((m: any, idx: number) => {
+          const merchantId = Number(m.id ?? m.merchant_id ?? idx);
+          return {
+            id: Number.isFinite(merchantId) ? merchantId : idx,
+            name: m.name || m.contact_name || "",
+            email: m.email || "",
+            businessName: m.business_name || m.businessName || "",
+            status: (m.status || "pending") as Merchant["status"],
+            totalVolume: (m.total_volume || 0) / 100,
+            currency: m.currency || "NGN",
+            joinedDate: m.created_at || "",
+          };
+        }),
       );
 
       // Derive stats from live transactions
@@ -112,13 +130,14 @@ export default function AdminDashboard() {
 
       // Fetch supplemental stats (active merchants, pending, etc.)
       const statsResp = await fetchFromAPI(`${API_BASE_URL}/admin/stats`);
+      const safeStats = statsResp && typeof statsResp === "object" ? (statsResp as Record<string, any>) : {};
       setStats({
         totalRevenue: new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 2 }).format(totalRevenue),
-        activeMerchants: statsResp.active_merchants || 0,
-        verifiedToday: statsResp.verified_today || 0,
-        pendingOnboarding: statsResp.pending_kyc || 0,
-        totalTransactions: totalTx || statsResp.total_transactions || 0,
-        successRate: successRate || statsResp.success_rate || 0,
+        activeMerchants: safeStats.active_merchants || 0,
+        verifiedToday: safeStats.verified_today || 0,
+        pendingOnboarding: safeStats.pending_kyc || 0,
+        totalTransactions: totalTx || safeStats.total_transactions || 0,
+        successRate: successRate || safeStats.success_rate || 0,
       });
     } catch (err) {
       console.error("Failed to load admin dashboard data:", err);

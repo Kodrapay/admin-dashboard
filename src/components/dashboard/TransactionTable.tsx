@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/table";
 
 interface Transaction {
-  id: string;
-  reference: string;
+  id: string | number;
+  reference: string | number;
   customer: string;
   email: string;
   amount: number;
@@ -19,11 +19,13 @@ interface Transaction {
   status: "successful" | "pending" | "failed";
   date: string;
   merchant?: string;
+  type?: string;
 }
 
 interface TransactionTableProps {
   transactions: Transaction[];
   showMerchant?: boolean;
+  showType?: boolean;
 }
 
 const statusStyles = {
@@ -32,7 +34,7 @@ const statusStyles = {
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
-export function TransactionTable({ transactions, showMerchant = false }: TransactionTableProps) {
+export function TransactionTable({ transactions, showMerchant = false, showType = false }: TransactionTableProps) {
   const formatAmount = (amount: number, currency: string, locale: string = "en-NG") => {
     return new Intl.NumberFormat(locale, {
       style: "currency",
@@ -48,6 +50,7 @@ export function TransactionTable({ transactions, showMerchant = false }: Transac
             <TableHead className="font-semibold">Reference</TableHead>
             <TableHead className="font-semibold">Customer</TableHead>
             {showMerchant && <TableHead className="font-semibold">Merchant</TableHead>}
+            {showType && <TableHead className="font-semibold">Type</TableHead>}
             <TableHead className="font-semibold">Amount</TableHead>
             <TableHead className="font-semibold">Status</TableHead>
             <TableHead className="font-semibold">Date</TableHead>
@@ -57,8 +60,7 @@ export function TransactionTable({ transactions, showMerchant = false }: Transac
           {transactions.map((transaction, index) => (
             <TableRow
               key={transaction.id}
-              className="animate-fade-in cursor-pointer hover:bg-muted/30"
-              style={{ animationDelay: `${index * 50}ms` }}
+              className="cursor-pointer hover:bg-muted/30"
             >
               <TableCell className="font-mono text-sm">{transaction.reference}</TableCell>
               <TableCell>
@@ -70,6 +72,7 @@ export function TransactionTable({ transactions, showMerchant = false }: Transac
               {showMerchant && (
                 <TableCell className="font-medium">{transaction.merchant}</TableCell>
               )}
+              {showType && <TableCell className="capitalize text-muted-foreground text-sm">{transaction.type || "payment"}</TableCell>}
               <TableCell className="font-semibold">
                 {formatAmount(transaction.amount, transaction.currency)}
               </TableCell>

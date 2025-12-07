@@ -4,7 +4,7 @@ const SESSION_COOKIE_NAME = "kodrapay_admin_session";
 
 export interface SessionData {
   sessionId: string;
-  userId: string;
+  userId: number;
   email: string;
   role: string;
 }
@@ -99,7 +99,6 @@ export async function logout(): Promise<void> {
   // Also clear any localStorage tokens for backward compatibility
   localStorage.removeItem("authToken");
 }
-
 // Check if user is authenticated
 export async function isAuthenticated(): Promise<boolean> {
   const session = await validateSession();
