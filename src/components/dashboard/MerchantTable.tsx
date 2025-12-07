@@ -16,8 +16,8 @@ interface Merchant {
   name: string;
   email: string;
   businessName: string;
-  status: "active" | "pending" | "suspended" | "blocked";
-  kycStatus: "pending" | "approved" | "rejected" | "not_started";
+  status: "active" | "pending" | "suspended" | "blocked" | "inactive";
+  kycStatus: "pending" | "approved" | "rejected" | "not_started" | "completed" | "verified";
   totalVolume: number;
   currency: string;
   joinedDate: string;
@@ -27,6 +27,7 @@ interface MerchantTableProps {
   merchants: Merchant[];
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
+  onEnable?: (id: string) => void;
   onToggleStatus?: (id: string, nextStatus: Merchant["status"]) => void; // Keep for existing functionality, if any
 }
 
@@ -35,12 +36,15 @@ const statusStyles = {
   pending: "bg-warning/10 text-warning border-warning/20",
   suspended: "bg-destructive/10 text-destructive border-destructive/20",
   blocked: "bg-destructive/10 text-destructive border-destructive/20",
+  inactive: "bg-muted/10 text-muted-foreground border-muted/20",
   approved: "bg-success/10 text-success border-success/20",
   rejected: "bg-destructive/10 text-destructive border-destructive/20",
   not_started: "bg-muted/10 text-muted-foreground border-muted/20",
+  completed: "bg-success/10 text-success border-success/20",
+  verified: "bg-success/10 text-success border-success/20",
 };
 
-export function MerchantTable({ merchants, onApprove, onReject, onToggleStatus }: MerchantTableProps) {
+export function MerchantTable({ merchants, onApprove, onReject, onEnable, onToggleStatus }: MerchantTableProps) {
   const formatAmount = (amount: number, currency: string) => {
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
@@ -114,6 +118,15 @@ export function MerchantTable({ merchants, onApprove, onReject, onToggleStatus }
                         Reject
                       </Button>
                     </>
+                  ) : merchant.status === "inactive" || merchant.kycStatus === "not_started" ? (
+                    <>
+                      <Button variant="default" size="sm" onClick={() => onEnable?.(merchant.id)}>
+                        Enable
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </>
                   ) : (
                     <>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -121,17 +134,17 @@ export function MerchantTable({ merchants, onApprove, onReject, onToggleStatus }
                       </Button>
                       {onToggleStatus && (
                         <Button
-                          variant={merchant.status === "blocked" ? "secondary" : "destructive"}
+                          variant={merchant.status === "blocked" || merchant.status === "suspended" ? "secondary" : "destructive"}
                           size="sm"
                           className="h-8"
                           onClick={() =>
                             onToggleStatus(
                               merchant.id,
-                              merchant.status === "blocked" ? "active" : "blocked",
+                              merchant.status === "blocked" || merchant.status === "suspended" ? "active" : "blocked",
                             )
                           }
                         >
-                          {merchant.status === "blocked" ? "Unblock" : "Block"}
+                          {merchant.status === "blocked" || merchant.status === "suspended" ? "Activate" : "Block"}
                         </Button>
                       )}
                       <Button variant="ghost" size="icon" className="h-8 w-8">

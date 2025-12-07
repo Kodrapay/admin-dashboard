@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { MerchantTable } from "@/components/dashboard/MerchantTable";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,10 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, ShieldCheck, Filter } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api-client";
 
-type MerchantStatus = "active" | "pending" | "suspended" | "blocked";
-type KYCStatus = "pending" | "approved" | "rejected" | "not_started";
+type MerchantStatus = "active" | "pending" | "suspended" | "blocked" | "inactive";
+type KYCStatus = "pending" | "approved" | "rejected" | "not_started" | "completed" | "verified";
 
 type Merchant = {
   id: string;
@@ -33,8 +34,7 @@ type OnboardingItem = {
 };
 
 export default function AdminMerchants() {
-  const [merchantList, setMerchantList] = useState<Merchant[]>([]);
-  const [pendingMerchants, setPendingMerchants] = useState<Merchant[]>([]); // New state for pending
+  const [allMerchants, setAllMerchants] = useState<Merchant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     activeMerchants: 0,
@@ -46,38 +46,12 @@ export default function AdminMerchants() {
   const fetchMerchantsData = async () => {
     setIsLoading(true);
     try {
-      // Fetch all merchants (if still needed, otherwise remove)
-      // const allMerchantsResponse = await fetch("http://localhost:8000/admin/merchants");
-      // if (!allMerchantsResponse.ok) {
-      //   throw new Error("Failed to fetch all merchants");
-      // }
-      // const allMerchantsData = await allMerchantsResponse.json();
-      // const transformedAllMerchants = allMerchantsData.map((m: any) => ({
-      //   id: m.id,
-      //   name: m.name,
-      //   email: m.email,
-      //   businessName: m.business_name,
-      //   status: m.status as MerchantStatus,
-      //   kycStatus: m.kyc_status as KYCStatus,
-      //   totalVolume: m.total_volume || 0,
-      //   currency: "NGN",
-      //   joinedDate: new Date(m.created_at || Date.now()).toLocaleDateString("en-US", {
-      //     year: "numeric",
-      //     month: "short",
-      //     day: "numeric",
-      //   }),
-      // }));
-      // setMerchantList(transformedAllMerchants);
-
-      // Fetch pending merchants
-      const pendingMerchantsResponse = await fetch(
-        "http://localhost:8000/admin/merchants/pending",
-      );
-      if (!pendingMerchantsResponse.ok) {
-        throw new Error("Failed to fetch pending merchants");
+      const allMerchantsResponse = await fetch(`${API_BASE_URL}/admin/merchants`);
+      if (!allMerchantsResponse.ok) {
+        throw new Error("Failed to fetch merchants");
       }
-      const pendingMerchantsData = await pendingMerchantsResponse.json();
-      const transformedPendingMerchants = pendingMerchantsData.map((m: any) => ({
+      const allMerchantsData = await allMerchantsResponse.json();
+      const transformedAllMerchants: Merchant[] = (Array.isArray(allMerchantsData) ? allMerchantsData : allMerchantsData.data || []).map((m: any) => ({
         id: m.id,
         name: m.name,
         email: m.email,
@@ -92,10 +66,10 @@ export default function AdminMerchants() {
           day: "numeric",
         }),
       }));
-      setPendingMerchants(transformedPendingMerchants);
+      setAllMerchants(transformedAllMerchants);
 
       // Fetch stats
-      const statsResponse = await fetch("http://localhost:8000/admin/stats");
+      const statsResponse = await fetch(`${API_BASE_URL}/admin/stats`);
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setStats({
@@ -120,14 +94,28 @@ export default function AdminMerchants() {
     fetchMerchantsData();
   }, [toast]);
 
+  const activeMerchants = useMemo(
+    () => allMerchants.filter((m) => m.status === "active"),
+    [allMerchants],
+  );
+  const pendingMerchants = useMemo(
+    () => allMerchants.filter((m) => m.kycStatus === "pending" || m.status === "pending"),
+    [allMerchants],
+  );
+  const blockedMerchants = useMemo(
+    () => allMerchants.filter((m) => m.status === "blocked" || m.status === "suspended"),
+    [allMerchants],
+  );
+  const inactiveMerchants = useMemo(
+    () => allMerchants.filter((m) => m.status === "inactive"),
+    [allMerchants],
+  );
+
   const handleApproveMerchant = async (id: string) => {
     try {
-      const response = await fetch(
-        `http://localhost:8000/admin/merchants/${id}/approve`,
-        {
-          method: "POST",
-        },
-      );
+      const response = await fetch(`${API_BASE_URL}/admin/merchants/${id}/approve`, {
+        method: "POST",
+      });
       if (!response.ok) {
         throw new Error("Failed to approve merchant");
       }
@@ -148,12 +136,9 @@ export default function AdminMerchants() {
 
   const handleRejectMerchant = async (id: string) => {
     try {
-      const response = await fetch(
-        `http://localhost:8000/admin/merchants/${id}/reject`,
-        {
-          method: "POST",
-        },
-      );
+      const response = await fetch(`${API_BASE_URL}/admin/merchants/${id}/reject`, {
+        method: "POST",
+      });
       if (!response.ok) {
         throw new Error("Failed to reject merchant");
       }
@@ -167,6 +152,54 @@ export default function AdminMerchants() {
       toast({
         title: "Error",
         description: "Failed to reject merchant",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEnableMerchant = async (id: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/merchants/${id}/kyc/enable`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to enable merchant");
+      }
+      toast({
+        title: "Merchant Enabled",
+        description: `Merchant ${id} has been enabled for KYC.`,
+      });
+      fetchMerchantsData(); // Refresh list
+    } catch (error) {
+      console.error("Error enabling merchant:", error);
+      toast({
+        title: "Error",
+        description: "Failed to enable merchant",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggleStatus = async (id: string, nextStatus: MerchantStatus) => {
+    const endpoint =
+      nextStatus === "active"
+        ? `${API_BASE_URL}/admin/merchants/${id}/approve`
+        : `${API_BASE_URL}/admin/merchants/${id}/suspend`;
+    try {
+      const response = await fetch(endpoint, { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Failed to update status");
+      }
+      toast({
+        title: "Status updated",
+        description: `Merchant ${id} is now ${nextStatus}.`,
+      });
+      fetchMerchantsData();
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update status",
         variant: "destructive",
       });
     }
@@ -234,38 +267,86 @@ export default function AdminMerchants() {
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {isLoading ? (
-            <Card className="p-8 text-center">
-              <p className="text-muted-foreground">Loading merchants from database...</p>
-            </Card>
-          ) : (
+      {isLoading ? (
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground">Loading merchants from database...</p>
+        </Card>
+      ) : (
+        <div className="space-y-8">
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Pending / KYC review</h3>
+                <p className="text-sm text-muted-foreground">Merchants waiting for approval.</p>
+              </div>
+              <Badge variant="secondary">{pendingMerchants.length} merchants</Badge>
+            </div>
             <MerchantTable
-              merchants={pendingMerchants} // Display pending merchants here
+              merchants={pendingMerchants}
               onApprove={handleApproveMerchant}
               onReject={handleRejectMerchant}
+              onEnable={handleEnableMerchant}
             />
-          )}
-        </div>
+          </section>
 
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-semibold text-foreground">Onboarding queue</h3>
-            <Badge variant="secondary">{onboardingQueue.length} pending</Badge>
-          </div>
-          <Separator />
-          <div className="space-y-3 mt-4">
-            {onboardingQueue.map((item) => (
-              <div key={item.id} className="p-3 rounded-lg bg-muted/40 border border-border">
-                <p className="font-semibold text-foreground">{item.business}</p>
-                <p className="text-sm text-muted-foreground">{item.stage}</p>
-                <p className="text-xs text-warning mt-1">SLA: {item.sla}</p>
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Active merchants</h3>
+                <p className="text-sm text-muted-foreground">Live and processing volume.</p>
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+              <Badge variant="secondary">{activeMerchants.length} merchants</Badge>
+            </div>
+            <MerchantTable merchants={activeMerchants} onToggleStatus={handleToggleStatus} />
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Blocked / Suspended</h3>
+                <p className="text-sm text-muted-foreground">Restricted merchants that may need review.</p>
+              </div>
+              <Badge variant="secondary">{blockedMerchants.length} merchants</Badge>
+            </div>
+            <MerchantTable
+              merchants={blockedMerchants}
+              onToggleStatus={(id, nextStatus) => handleToggleStatus(id, nextStatus)}
+            />
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Inactive</h3>
+                <p className="text-sm text-muted-foreground">Merchants who haven't completed onboarding.</p>
+              </div>
+              <Badge variant="secondary">{inactiveMerchants.length} merchants</Badge>
+            </div>
+            <MerchantTable
+              merchants={inactiveMerchants}
+              onEnable={handleEnableMerchant}
+              onToggleStatus={(id, nextStatus) => handleToggleStatus(id, nextStatus)}
+            />
+          </section>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-semibold text-foreground">Onboarding queue</h3>
+              <Badge variant="secondary">{onboardingQueue.length} pending</Badge>
+            </div>
+            <Separator />
+            <div className="space-y-3 mt-4">
+              {onboardingQueue.map((item) => (
+                <div key={item.id} className="p-3 rounded-lg bg-muted/40 border border-border">
+                  <p className="font-semibold text-foreground">{item.business}</p>
+                  <p className="text-sm text-muted-foreground">{item.stage}</p>
+                  <p className="text-xs text-warning mt-1">SLA: {item.sla}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

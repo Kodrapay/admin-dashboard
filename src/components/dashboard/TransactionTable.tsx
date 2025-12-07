@@ -33,8 +33,8 @@ const statusStyles = {
 };
 
 export function TransactionTable({ transactions, showMerchant = false }: TransactionTableProps) {
-  const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat("en-NG", {
+  const formatAmount = (amount: number, currency: string, locale: string = "en-NG") => {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currency,
     }).format(amount);

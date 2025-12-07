@@ -5,7 +5,7 @@ import { MerchantTable } from "@/components/dashboard/MerchantTable";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { PendingApprovals } from "@/components/dashboard/PendingApprovals";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL, apiClient, fetchFromAPI } from "@/lib/api-client";
 import {
@@ -62,10 +62,14 @@ export default function AdminDashboard() {
     totalTransactions: 0,
     successRate: 0,
   });
+  const [isLoading, setIsLoading] = useState(true); // Initialize to true
+  const [isError, setIsError] = useState(false);
 
   const loadData = async () => {
-    // Fetch transactions from admin endpoint
+    setIsLoading(true);
+    setIsError(false); // Reset error state on new load attempt
     try {
+      // Fetch transactions from admin endpoint
       const txResp = await fetchFromAPI(apiClient.admin.transactions);
       const txData: any[] = Array.isArray(txResp) ? txResp : txResp.transactions || txResp.data || [];
       setTransactions(
@@ -81,12 +85,8 @@ export default function AdminDashboard() {
           merchant: tx.merchant || tx.merchant_name,
         })),
       );
-    } catch {
-      setTransactions([]);
-    }
 
-    // Fetch merchants from admin endpoint
-    try {
+      // Fetch merchants from admin endpoint
       const merchResp = await fetchFromAPI(apiClient.admin.merchants);
       const merchData: any[] = Array.isArray(merchResp) ? merchResp : merchResp.merchants || merchResp.data || [];
       setMerchantRaw(merchData);
@@ -102,25 +102,41 @@ export default function AdminDashboard() {
           joinedDate: m.created_at || "",
         })),
       );
-    } catch {
-      setMerchants([]);
-      setMerchantRaw([]);
-    }
 
-    // Fetch stats from admin endpoint
-    try {
+      // Derive stats from live transactions
+      const totalRevenueRaw = txData.reduce((sum, tx: any) => sum + (tx.amount || 0), 0);
+      const totalRevenue = totalRevenueRaw / 100;
+      const totalTx = txData.length;
+      const successCount = txData.filter((t: any) => (t.status || "").toLowerCase() === "successful").length;
+      const successRate = totalTx ? (successCount / totalTx) * 100 : 0;
+
+      // Fetch supplemental stats (active merchants, pending, etc.)
       const statsResp = await fetchFromAPI(`${API_BASE_URL}/admin/stats`);
-      const volumeInNaira = (statsResp.total_volume || 0) / 100;
       setStats({
-        totalRevenue: `₦${(volumeInNaira / 1000000000).toFixed(1)}B`,
+        totalRevenue: new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 2 }).format(totalRevenue),
         activeMerchants: statsResp.active_merchants || 0,
         verifiedToday: statsResp.verified_today || 0,
         pendingOnboarding: statsResp.pending_kyc || 0,
-        totalTransactions: statsResp.total_transactions || 0,
-        successRate: statsResp.success_rate || 0,
+        totalTransactions: totalTx || statsResp.total_transactions || 0,
+        successRate: successRate || statsResp.success_rate || 0,
       });
     } catch (err) {
-      console.error("Failed to fetch stats:", err);
+      console.error("Failed to load admin dashboard data:", err);
+      setIsError(true);
+      // Optionally reset states to empty if error occurs
+      setTransactions([]);
+      setMerchants([]);
+      setMerchantRaw([]);
+      setStats({
+        totalRevenue: "₦0",
+        activeMerchants: 0,
+        verifiedToday: 0,
+        pendingOnboarding: 0,
+        totalTransactions: 0,
+        successRate: 0,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -128,88 +144,120 @@ export default function AdminDashboard() {
     loadData();
   }, []);
 
+  const monthlyRevenueData = useMemo(() => {
+    const revenueByMonth: { [key: string]: number } = {};
+    transactions.forEach(tx => {
+      const month = new Date(tx.date).toLocaleString('en-US', { month: 'short' });
+      revenueByMonth[month] = (revenueByMonth[month] || 0) + tx.amount;
+    });
+
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return months.map(month => ({
+      name: month,
+      revenue: revenueByMonth[month] || 0
+    }));
+  }, [transactions]);
+
   return (
     <DashboardLayout type="admin" title="Admin Dashboard">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Total Revenue"
-          value={stats.totalRevenue}
-          change={`₦${((stats.totalTransactions * 4167) / 100).toFixed(2)} avg per txn`}
-          changeType="positive"
-          icon={DollarSign}
-          iconColor="bg-success/10 text-success"
-          delay={0}
-        />
-        <StatsCard
-          title="Active Merchants"
-          value={stats.activeMerchants.toString()}
-          change={`${stats.pendingOnboarding} pending onboarding`}
-          changeType={stats.pendingOnboarding > 0 ? "positive" : "neutral"}
-          icon={Users}
-          iconColor="bg-primary/10 text-primary"
-          delay={100}
-        />
-        <StatsCard
-          title="Transactions"
-          value={stats.totalTransactions.toLocaleString()}
-          change={`${((stats.totalTransactions / 30) || 0).toFixed(0)} per day avg`}
-          changeType="positive"
-          icon={CreditCard}
-          iconColor="bg-warning/10 text-warning"
-          delay={200}
-        />
-        <StatsCard
-          title="Success Rate"
-          value={`${stats.successRate.toFixed(1)}%`}
-          change={stats.successRate >= 90 ? "Excellent performance" : "Needs attention"}
-          changeType={stats.successRate >= 90 ? "positive" : "negative"}
-          icon={TrendingUp}
-          iconColor="bg-accent text-accent-foreground"
-          delay={300}
-        />
-      </div>
-
-      {/* Charts */}
-      <div className="mb-8">
-        <RevenueChart title="Platform Revenue Overview" />
-      </div>
-
-      {/* Pending Approvals */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Pending Approvals</h2>
-          <Button variant="outline" size="sm" onClick={loadData}>
-            Refresh
-            <ArrowUpRight className="h-4 w-4" />
-          </Button>
+      {isLoading && (
+        <div className="flex justify-center items-center h-48">
+          <p className="text-lg text-muted-foreground">Loading dashboard data...</p>
         </div>
-        <PendingApprovals merchants={merchantRaw} onApprovalChange={loadData} />
-      </div>
+      )}
 
-      {/* Recent Merchants */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Recent Merchants</h2>
-          <Button variant="outline" size="sm" onClick={() => navigate("/admin/merchants")}>
-            View All
-            <ArrowUpRight className="h-4 w-4" />
-          </Button>
+      {isError && (
+        <div className="flex flex-col justify-center items-center h-48 text-destructive">
+          <p className="text-lg">Error loading dashboard data.</p>
+          <p className="text-sm">Please try again later.</p>
+          <Button onClick={loadData} className="mt-4">Retry</Button>
         </div>
-        <MerchantTable merchants={merchants} />
-      </div>
+      )}
 
-      {/* Recent Transactions */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Recent Transactions</h2>
-          <Button variant="outline" size="sm" onClick={() => navigate("/admin/transactions")}>
-            View All
-            <ArrowUpRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <TransactionTable transactions={transactions} showMerchant />
-      </div>
+      {!isLoading && !isError && (
+        <>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatsCard
+              title="Total Revenue"
+              value={stats.totalRevenue}
+              change={`₦${((stats.totalTransactions * 4167) / 100).toFixed(2)} avg per txn`}
+              changeType="positive"
+              icon={DollarSign}
+              iconColor="bg-success/10 text-success"
+              delay={0}
+            />
+            <StatsCard
+              title="Active Merchants"
+              value={stats.activeMerchants.toString()}
+              change={`${stats.pendingOnboarding} pending onboarding`}
+              changeType={stats.pendingOnboarding > 0 ? "positive" : "neutral"}
+              icon={Users}
+              iconColor="bg-primary/10 text-primary"
+              delay={100}
+            />
+            <StatsCard
+              title="Transactions"
+              value={stats.totalTransactions.toLocaleString()}
+              change={`${((stats.totalTransactions / 30) || 0).toFixed(0)} per day avg`}
+              changeType="positive"
+              icon={CreditCard}
+              iconColor="bg-warning/10 text-warning"
+              delay={200}
+            />
+            <StatsCard
+              title="Success Rate"
+              value={`${stats.successRate.toFixed(1)}%`}
+              change={stats.successRate >= 90 ? "Excellent performance" : "Needs attention"}
+              changeType={stats.successRate >= 90 ? "positive" : "negative"}
+              icon={TrendingUp}
+              iconColor="bg-accent text-accent-foreground"
+              delay={300}
+            />
+          </div>
+
+          {/* Charts */}
+          <div className="mb-8">
+            <RevenueChart title="Platform Revenue Overview" data={monthlyRevenueData} />
+          </div>
+
+          {/* Pending Approvals */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Pending Approvals</h2>
+              <Button variant="outline" size="sm" onClick={loadData}>
+                Refresh
+                <ArrowUpRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <PendingApprovals merchants={merchantRaw} onApprovalChange={loadData} />
+          </div>
+
+          {/* Recent Merchants */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Recent Merchants</h2>
+              <Button variant="outline" size="sm" onClick={() => navigate("/admin/merchants")}>
+                View All
+                <ArrowUpRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <MerchantTable merchants={merchants} />
+          </div>
+
+          {/* Recent Transactions */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Recent Transactions</h2>
+              <Button variant="outline" size="sm" onClick={() => navigate("/admin/transactions")}>
+                View All
+                <ArrowUpRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <TransactionTable transactions={transactions} showMerchant />
+          </div>
+        </>
+      )}
     </DashboardLayout>
   );
 }
