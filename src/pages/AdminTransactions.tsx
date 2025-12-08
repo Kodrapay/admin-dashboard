@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Download, Filter, Calendar, Search } from "lucide-react";
+import { apiClient, fetchFromAPI } from "@/lib/api-client";
 
 type Transaction = {
   id: string;
@@ -15,16 +16,17 @@ type Transaction = {
   email: string;
   amount: number;
   currency: string;
-  status: "successful" | "pending" | "failed";
+  status: "successful" | "pending" | "failed" | "payout";
   date: string;
   merchant?: string;
+  type?: string;
 };
 
 type Stats = {
   processedToday: string;
   successRate: string;
   chargebacks: number;
-  avgTicketSize: string;
+  avgTxnSize: string;
   failedToday: number;
   pendingSettlements: string;
   disputesThisWeek: number;
@@ -37,53 +39,75 @@ export default function AdminTransactions() {
     processedToday: "₦0",
     successRate: "0%",
     chargebacks: 0,
-    avgTicketSize: "₦0",
+    avgTxnSize: "₦0",
     failedToday: 0,
     pendingSettlements: "₦0",
     disputesThisWeek: 0,
   });
 
+  const normalizeStatus = (status?: string): Transaction["status"] => {
+    const value = (status || "").toLowerCase();
+    if (value === "success" || value === "successful" || value === "completed" || value === "paid") {
+      return "successful";
+    }
+    if (value === "payout") {
+      return "payout";
+    }
+    if (value === "failed" || value === "error") {
+      return "failed";
+    }
+    return "pending";
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch transactions
-        const txResponse = await fetch("http://localhost:8000/admin/transactions");
-        if (txResponse.ok) {
-          const txData = await txResponse.json();
-          const txList = (Array.isArray(txData) ? txData : txData.transactions || []).map((tx: any) => ({
-            id: tx.id || tx.reference,
-            reference: tx.reference || tx.id,
-            customer: tx.customer_name || tx.customer || "Customer",
-            email: tx.customer_email || "",
-            amount: (tx.amount || 0) / 100,
-            currency: tx.currency || "NGN",
-            status: (tx.status === "success" ? "successful" : tx.status || "pending") as Transaction["status"],
-            date: new Date(tx.created_at || Date.now()).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            }),
-            merchant: tx.merchant_name || tx.merchant,
-          }));
-          setTransactions(txList);
+        const txResp = await fetchFromAPI(apiClient.admin.transactions);
+        const txRaw = Array.isArray(txResp) ? txResp : txResp?.transactions || txResp?.data || [];
+        const txList = (Array.isArray(txRaw) ? txRaw : []).map((tx: any, idx: number) => ({
+          id: tx.id ?? tx.reference ?? idx,
+          reference: tx.reference ?? tx.id ?? `txn-${idx}`,
+          customer: tx.customer_name || tx.customer || "Customer",
+          email: tx.customer_email || "",
+          amount: tx.amount || 0,
+          currency: tx.currency || "NGN",
+          status: normalizeStatus(tx.status),
+          date: new Date(tx.created_at || Date.now()).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
+          merchant: tx.merchant_name || tx.merchant,
+          type: tx.type || tx.payment_method || "payment",
+        }));
+        setTransactions(txList);
 
-          // Calculate stats from transactions
-          const total = txList.reduce((sum: number, tx: Transaction) => sum + tx.amount, 0);
-          const successful = txList.filter((tx: Transaction) => tx.status === "successful").length;
-          const failed = txList.filter((tx: Transaction) => tx.status === "failed").length;
-          const successRate = txList.length > 0 ? ((successful / txList.length) * 100).toFixed(1) : "0";
-          const avgTicket = txList.length > 0 ? total / txList.length : 0;
+        // Calculate stats from transactions
+        const total = txList.reduce((sum: number, tx: Transaction) => sum + tx.amount, 0);
+        const successful = txList.filter((tx: Transaction) => tx.status === "successful").length;
+        const failed = txList.filter((tx: Transaction) => tx.status === "failed").length;
+        const successRate = txList.length > 0 ? ((successful / txList.length) * 100).toFixed(1) : "0";
+        const avgTicket = txList.length > 0 ? total / txList.length : 0;
 
-          setStats({
-            processedToday: `₦${(total / 1000000).toFixed(1)}M`,
-            successRate: `${successRate}%`,
-            chargebacks: 0,
-            avgTicketSize: `₦${avgTicket.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`,
-            failedToday: failed,
-            pendingSettlements: `₦${(total * 0.12).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`,
-            disputesThisWeek: 0,
-          });
-        }
+        setStats({
+          processedToday: new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+          }).format(total),
+          successRate: `${successRate}%`,
+          chargebacks: 0,
+          avgTxnSize: new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+          }).format(avgTicket),
+          failedToday: failed,
+          pendingSettlements: new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+          }).format(total * 0.12),
+          disputesThisWeek: 0,
+        });
       } catch (error) {
         console.error("Error fetching transactions:", error);
       } finally {
@@ -114,8 +138,8 @@ export default function AdminTransactions() {
             <p className="text-2xl font-semibold text-foreground mt-1 text-warning">{stats.chargebacks}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Avg. ticket size</p>
-            <p className="text-2xl font-semibold text-foreground mt-1">{stats.avgTicketSize}</p>
+            <p className="text-sm text-muted-foreground">Avg. txn size</p>
+            <p className="text-2xl font-semibold text-foreground mt-1">{stats.avgTxnSize}</p>
           </Card>
         </div>
       )}
@@ -148,7 +172,7 @@ export default function AdminTransactions() {
           <Badge variant="secondary">Live</Badge>
           <span className="text-sm text-muted-foreground">Last updated: a few seconds ago</span>
         </div>
-        <TransactionTable transactions={transactions} showMerchant />
+        <TransactionTable transactions={transactions} showMerchant showType />
       </Card>
 
       {!isLoading && (

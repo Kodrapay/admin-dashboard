@@ -12,6 +12,7 @@ import AdminMerchants from "./pages/AdminMerchants";
 import AdminTransactions from "./pages/AdminTransactions";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminSettings from "./pages/AdminSettings";
+import AdminFraud from "./pages/AdminFraud";
 import Checkout from "./pages/Checkout";
 import { validateSession, getSessionCookie } from "./lib/session";
 
@@ -154,6 +155,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <AdminSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/fraud"
+            element={
+              <ProtectedRoute>
+                <AdminFraud />
               </ProtectedRoute>
             }
           />

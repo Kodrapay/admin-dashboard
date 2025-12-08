@@ -8,13 +8,13 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, ShieldCheck, Filter } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api-client";
+import { API_BASE_URL, fetchFromAPI } from "@/lib/api-client";
 
 type MerchantStatus = "active" | "pending" | "suspended" | "blocked" | "inactive";
 type KYCStatus = "pending" | "approved" | "rejected" | "not_started" | "completed" | "verified";
 
 type Merchant = {
-  id: string;
+  id: number;
   name: string;
   email: string;
   businessName: string;
@@ -46,38 +46,39 @@ export default function AdminMerchants() {
   const fetchMerchantsData = async () => {
     setIsLoading(true);
     try {
-      const allMerchantsResponse = await fetch(`${API_BASE_URL}/admin/merchants`);
-      if (!allMerchantsResponse.ok) {
-        throw new Error("Failed to fetch merchants");
-      }
-      const allMerchantsData = await allMerchantsResponse.json();
-      const transformedAllMerchants: Merchant[] = (Array.isArray(allMerchantsData) ? allMerchantsData : allMerchantsData.data || []).map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        email: m.email,
-        businessName: m.business_name,
-        status: m.status as MerchantStatus,
-        kycStatus: m.kyc_status as KYCStatus,
-        totalVolume: m.total_volume || 0,
-        currency: "NGN",
-        joinedDate: new Date(m.created_at || Date.now()).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
-      }));
+      const allMerchantsResponse = await fetchFromAPI(`${API_BASE_URL}/admin/merchants`);
+      const merchantsList: any[] = Array.isArray(allMerchantsResponse)
+        ? allMerchantsResponse
+        : allMerchantsResponse?.data || allMerchantsResponse?.merchants || [];
+
+      const transformedAllMerchants: Merchant[] = merchantsList.map((m: any, idx: number) => {
+        const id = Number(m.id ?? m.merchant_id ?? idx);
+        return {
+          id: Number.isFinite(id) ? id : idx,
+          name: m.name || m.contact_name || "Unknown",
+          email: m.email || "",
+          businessName: m.business_name || "Business",
+          status: (m.status || "pending") as MerchantStatus,
+          kycStatus: (m.kyc_status || "pending") as KYCStatus,
+          totalVolume: Number(m.total_volume || 0) / 100,
+          currency: m.currency || "NGN",
+          joinedDate: new Date(m.created_at || Date.now()).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
+        };
+      });
       setAllMerchants(transformedAllMerchants);
 
       // Fetch stats
-      const statsResponse = await fetch(`${API_BASE_URL}/admin/stats`);
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setStats({
-          activeMerchants: statsData.active_merchants || 0,
-          verifiedToday: statsData.verified_today || 0,
-          pendingOnboarding: statsData.pending_kyc || 0,
-        });
-      }
+      const statsResponse = await fetchFromAPI(`${API_BASE_URL}/admin/stats`);
+      const statsData = statsResponse && typeof statsResponse === "object" ? statsResponse : {};
+      setStats({
+        activeMerchants: statsData.active_merchants || 0,
+        verifiedToday: statsData.verified_today || 0,
+        pendingOnboarding: statsData.pending_kyc || 0,
+      });
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -92,14 +93,14 @@ export default function AdminMerchants() {
 
   useEffect(() => {
     fetchMerchantsData();
-  }, [toast]);
+  }, []);
 
   const activeMerchants = useMemo(
     () => allMerchants.filter((m) => m.status === "active"),
     [allMerchants],
   );
   const pendingMerchants = useMemo(
-    () => allMerchants.filter((m) => m.kycStatus === "pending" || m.status === "pending"),
+    () => allMerchants.filter((m) => m.kycStatus === "pending" || m.kycStatus === "not_started" || m.status === "pending" || m.status === "inactive"),
     [allMerchants],
   );
   const blockedMerchants = useMemo(
@@ -111,97 +112,67 @@ export default function AdminMerchants() {
     [allMerchants],
   );
 
-  const handleApproveMerchant = async (id: string) => {
+  const postAdminAction = async (url: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/merchants/${id}/approve`, {
-        method: "POST",
+      await fetchFromAPI(url, { method: "POST" });
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Request failed";
+      console.error("Admin action error:", error);
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
       });
-      if (!response.ok) {
-        throw new Error("Failed to approve merchant");
-      }
+      return false;
+    }
+  };
+
+  const handleApproveMerchant = async (id: number) => {
+    const ok = await postAdminAction(`${API_BASE_URL}/admin/merchants/${id}/approve`);
+    if (ok) {
       toast({
         title: "Merchant Approved",
         description: `Merchant ${id} has been approved.`,
       });
       fetchMerchantsData(); // Refresh list
-    } catch (error) {
-      console.error("Error approving merchant:", error);
-      toast({
-        title: "Error",
-        description: "Failed to approve merchant",
-        variant: "destructive",
-      });
     }
   };
 
-  const handleRejectMerchant = async (id: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/merchants/${id}/reject`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to reject merchant");
-      }
+  const handleRejectMerchant = async (id: number) => {
+    const ok = await postAdminAction(`${API_BASE_URL}/admin/merchants/${id}/reject`);
+    if (ok) {
       toast({
         title: "Merchant Rejected",
         description: `Merchant ${id} has been rejected.`,
       });
       fetchMerchantsData(); // Refresh list
-    } catch (error) {
-      console.error("Error rejecting merchant:", error);
-      toast({
-        title: "Error",
-        description: "Failed to reject merchant",
-        variant: "destructive",
-      });
     }
   };
 
-  const handleEnableMerchant = async (id: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/merchants/${id}/kyc/enable`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to enable merchant");
-      }
+  const handleEnableMerchant = async (id: number) => {
+    const ok = await postAdminAction(`${API_BASE_URL}/admin/merchants/${id}/kyc/enable`);
+    if (ok) {
       toast({
         title: "Merchant Enabled",
         description: `Merchant ${id} has been enabled for KYC.`,
       });
       fetchMerchantsData(); // Refresh list
-    } catch (error) {
-      console.error("Error enabling merchant:", error);
-      toast({
-        title: "Error",
-        description: "Failed to enable merchant",
-        variant: "destructive",
-      });
     }
   };
 
-  const handleToggleStatus = async (id: string, nextStatus: MerchantStatus) => {
+  const handleToggleStatus = async (id: number, nextStatus: MerchantStatus) => {
     const endpoint =
       nextStatus === "active"
         ? `${API_BASE_URL}/admin/merchants/${id}/approve`
         : `${API_BASE_URL}/admin/merchants/${id}/suspend`;
-    try {
-      const response = await fetch(endpoint, { method: "POST" });
-      if (!response.ok) {
-        throw new Error("Failed to update status");
-      }
+    const ok = await postAdminAction(endpoint);
+    if (ok) {
       toast({
         title: "Status updated",
         description: `Merchant ${id} is now ${nextStatus}.`,
       });
       fetchMerchantsData();
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update status",
-        variant: "destructive",
-      });
     }
   };
 

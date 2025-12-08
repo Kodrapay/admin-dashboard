@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 
 interface Merchant {
-  id: string;
+  id: number;
   name: string;
   email: string;
   businessName: string;
@@ -25,12 +25,11 @@ interface Merchant {
 
 interface MerchantTableProps {
   merchants: Merchant[];
-  onApprove?: (id: string) => void;
-  onReject?: (id: string) => void;
-  onEnable?: (id: string) => void;
-  onToggleStatus?: (id: string, nextStatus: Merchant["status"]) => void; // Keep for existing functionality, if any
+  onApprove?: (id: number) => void;
+  onReject?: (id: number) => void;
+  onEnable?: (id: number) => void;
+  onToggleStatus?: (id: number, nextStatus: Merchant["status"]) => void; // Keep for existing functionality, if any
 }
-
 const statusStyles = {
   active: "bg-success/10 text-success border-success/20",
   pending: "bg-warning/10 text-warning border-warning/20",
