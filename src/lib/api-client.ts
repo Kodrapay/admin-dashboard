@@ -16,6 +16,10 @@ export const apiClient = {
     users: `${API_BASE_URL}/admin/users`,
     merchants: `${API_BASE_URL}/admin/merchants`,
     transactions: `${API_BASE_URL}/admin/transactions`,
+    transactionsFraud: `${API_BASE_URL}/admin/transactions/fraud`,
+    transactionApprove: (ref: string) => `${API_BASE_URL}/admin/transactions/${ref}/approve`,
+    transactionDecline: (ref: string) => `${API_BASE_URL}/admin/transactions/${ref}/decline`,
+    settlementTrigger: `${API_BASE_URL}/admin/settlements/trigger`,
     reports: `${API_BASE_URL}/admin/reports`,
   },
 
