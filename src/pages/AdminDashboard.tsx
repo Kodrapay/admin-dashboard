@@ -24,7 +24,7 @@ type Transaction = {
   email: string;
   amount: number;
   currency: string;
-  status: "successful" | "pending" | "failed";
+  status: "successful" | "pending" | "failed" | "payout";
   date: string;
   merchant?: string;
   type?: string;
@@ -71,6 +71,9 @@ export default function AdminDashboard() {
     if (value === "success" || value === "successful" || value === "completed" || value === "paid") {
       return "successful";
     }
+    if (value === "payout") {
+      return "payout";
+    }
     if (value === "failed" || value === "error") {
       return "failed";
     }
@@ -114,7 +117,7 @@ export default function AdminDashboard() {
             email: m.email || "",
             businessName: m.business_name || m.businessName || "",
             status: (m.status || "pending") as Merchant["status"],
-            totalVolume: (m.total_volume || 0) / 100,
+            totalVolume: m.total_volume || 0,
             currency: m.currency || "NGN",
             joinedDate: m.created_at || "",
           };
@@ -123,7 +126,7 @@ export default function AdminDashboard() {
 
       // Derive stats from live transactions
       const totalRevenueRaw = txData.reduce((sum, tx: any) => sum + (tx.amount || 0), 0);
-      const totalRevenue = totalRevenueRaw / 100;
+      const totalRevenue = totalRevenueRaw;
       const totalTx = txData.length;
       const successCount = txData.filter((t: any) => (t.status || "").toLowerCase() === "successful").length;
       const successRate = totalTx ? (successCount / totalTx) * 100 : 0;
@@ -200,7 +203,9 @@ export default function AdminDashboard() {
             <StatsCard
               title="Total Revenue"
               value={stats.totalRevenue}
-              change={`₦${((stats.totalTransactions * 4167) / 100).toFixed(2)} avg per txn`}
+              change={`Avg per txn: ${new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(
+                stats.totalTransactions ? Number(stats.totalRevenue.replace(/[₦,]/g, "")) / stats.totalTransactions : 0
+              )}`}
               changeType="positive"
               icon={DollarSign}
               iconColor="bg-success/10 text-success"

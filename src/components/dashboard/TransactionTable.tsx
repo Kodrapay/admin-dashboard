@@ -16,7 +16,7 @@ interface Transaction {
   email: string;
   amount: number;
   currency: string;
-  status: "successful" | "pending" | "failed";
+  status: "successful" | "pending" | "failed" | "payout";
   date: string;
   merchant?: string;
   type?: string;
@@ -32,6 +32,7 @@ const statusStyles = {
   successful: "bg-success/10 text-success border-success/20",
   pending: "bg-warning/10 text-warning border-warning/20",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
+  payout: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800",
 };
 
 export function TransactionTable({ transactions, showMerchant = false, showType = false }: TransactionTableProps) {

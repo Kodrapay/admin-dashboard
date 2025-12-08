@@ -16,7 +16,7 @@ type Transaction = {
   email: string;
   amount: number;
   currency: string;
-  status: "successful" | "pending" | "failed";
+  status: "successful" | "pending" | "failed" | "payout";
   date: string;
   merchant?: string;
   type?: string;
@@ -49,6 +49,9 @@ export default function AdminTransactions() {
     const value = (status || "").toLowerCase();
     if (value === "success" || value === "successful" || value === "completed" || value === "paid") {
       return "successful";
+    }
+    if (value === "payout") {
+      return "payout";
     }
     if (value === "failed" || value === "error") {
       return "failed";
@@ -88,12 +91,21 @@ export default function AdminTransactions() {
         const avgTicket = txList.length > 0 ? total / txList.length : 0;
 
         setStats({
-          processedToday: `₦${(total / 1000000).toFixed(1)}M`,
+          processedToday: new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+          }).format(total),
           successRate: `${successRate}%`,
           chargebacks: 0,
-          avgTxnSize: `₦${avgTicket.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`,
+          avgTxnSize: new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+          }).format(avgTicket),
           failedToday: failed,
-          pendingSettlements: `₦${(total * 0.12).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`,
+          pendingSettlements: new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+          }).format(total * 0.12),
           disputesThisWeek: 0,
         });
       } catch (error) {
