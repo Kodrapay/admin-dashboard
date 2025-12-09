@@ -278,7 +278,7 @@ export default function AdminFraud() {
                   <Badge variant="outline">{tx.status}</Badge>
                 </div>
                 <p className="text-sm">
-                  Amount: {new Intl.NumberFormat("en-NG", { style: "currency", currency: tx.currency }).format(tx.amount)}
+                  Amount: {new Intl.NumberFormat("en-NG", { style: "currency", currency: tx.currency }).format(tx.amount / 100)}
                 </p>
                 <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</p>
                 <div className="flex gap-2 pt-2">

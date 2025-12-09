@@ -40,7 +40,7 @@ export function TransactionTable({ transactions, showMerchant = false, showType 
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currency,
-    }).format(amount);
+    }).format(amount / 100);
   };
 
   return (
@@ -48,13 +48,13 @@ export function TransactionTable({ transactions, showMerchant = false, showType 
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="font-semibold">Reference</TableHead>
+            <TableHead className="font-semibold w-[140px]">Reference</TableHead>
             <TableHead className="font-semibold">Customer</TableHead>
-            {showMerchant && <TableHead className="font-semibold">Merchant</TableHead>}
-            {showType && <TableHead className="font-semibold">Type</TableHead>}
-            <TableHead className="font-semibold">Amount</TableHead>
-            <TableHead className="font-semibold">Status</TableHead>
-            <TableHead className="font-semibold">Date</TableHead>
+            {showMerchant && <TableHead className="font-semibold max-w-[150px]">Merchant</TableHead>}
+            {showType && <TableHead className="font-semibold w-[100px]">Type</TableHead>}
+            <TableHead className="font-semibold w-[160px]">Amount</TableHead>
+            <TableHead className="font-semibold w-[120px]">Status</TableHead>
+            <TableHead className="font-semibold w-[140px]">Date</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -63,18 +63,18 @@ export function TransactionTable({ transactions, showMerchant = false, showType 
               key={transaction.id}
               className="cursor-pointer hover:bg-muted/30"
             >
-              <TableCell className="font-mono text-sm">{transaction.reference}</TableCell>
+              <TableCell className="font-mono text-sm truncate max-w-[140px]" title={String(transaction.reference)}>{transaction.reference}</TableCell>
               <TableCell>
-                <div>
-                  <p className="font-medium">{transaction.customer}</p>
-                  <p className="text-sm text-muted-foreground">{transaction.email}</p>
+                <div className="min-w-0">
+                  <p className="font-medium truncate" title={transaction.customer}>{transaction.customer}</p>
+                  <p className="text-sm text-muted-foreground truncate" title={transaction.email}>{transaction.email}</p>
                 </div>
               </TableCell>
               {showMerchant && (
-                <TableCell className="font-medium">{transaction.merchant}</TableCell>
+                <TableCell className="font-medium truncate max-w-[150px]" title={transaction.merchant}>{transaction.merchant}</TableCell>
               )}
-              {showType && <TableCell className="capitalize text-muted-foreground text-sm">{transaction.type || "payment"}</TableCell>}
-              <TableCell className="font-semibold">
+              {showType && <TableCell className="capitalize text-muted-foreground text-sm truncate">{transaction.type || "payment"}</TableCell>}
+              <TableCell className="font-semibold truncate" title={formatAmount(transaction.amount, transaction.currency)}>
                 {formatAmount(transaction.amount, transaction.currency)}
               </TableCell>
               <TableCell>

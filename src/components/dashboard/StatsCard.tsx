@@ -26,23 +26,24 @@ export function StatsCard({
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
+        <div className="flex-1 min-w-0 pr-3">
+          <p className="text-sm font-medium text-muted-foreground mb-2">{title}</p>
+          <p className="text-2xl md:text-3xl font-bold text-foreground break-words leading-tight" title={value}>{value}</p>
           {change && (
             <p
               className={cn(
-                "mt-1 text-sm font-medium",
+                "mt-2 text-sm font-medium",
                 changeType === "positive" && "text-success",
                 changeType === "negative" && "text-destructive",
                 changeType === "neutral" && "text-muted-foreground"
               )}
+              title={change}
             >
               {change}
             </p>
           )}
         </div>
-        <div className={cn("rounded-lg p-3", iconColor)}>
+        <div className={cn("rounded-lg p-3 flex-shrink-0", iconColor)}>
           <Icon className="h-6 w-6" />
         </div>
       </div>

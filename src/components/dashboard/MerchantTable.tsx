@@ -48,7 +48,7 @@ export function MerchantTable({ merchants, onApprove, onReject, onEnable, onTogg
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
       currency: currency,
-    }).format(amount);
+    }).format(amount / 100);
   };
 
   return (
@@ -56,12 +56,13 @@ export function MerchantTable({ merchants, onApprove, onReject, onEnable, onTogg
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="font-semibold">Merchant</TableHead>
-            <TableHead className="font-semibold">Business</TableHead>
-            <TableHead className="font-semibold">Total Volume</TableHead>
-            <TableHead className="font-semibold">KYC Status</TableHead> {/* Updated */}
-            <TableHead className="font-semibold">Status</TableHead>
-            <TableHead className="font-semibold">Joined</TableHead>
+            <TableHead className="font-semibold w-[70px]">MID</TableHead>
+            <TableHead className="font-semibold w-[220px]">Merchant</TableHead>
+            <TableHead className="font-semibold max-w-[180px]">Business</TableHead>
+            <TableHead className="font-semibold w-[160px]">Total Volume</TableHead>
+            <TableHead className="font-semibold w-[120px]">KYC Status</TableHead> {/* Updated */}
+            <TableHead className="font-semibold w-[120px]">Status</TableHead>
+            <TableHead className="font-semibold w-[130px]">Joined</TableHead>
             <TableHead className="font-semibold w-[180px]">Actions</TableHead> {/* Increased width */}
           </TableRow>
         </TableHeader>
@@ -72,21 +73,24 @@ export function MerchantTable({ merchants, onApprove, onReject, onEnable, onTogg
               className="animate-fade-in cursor-pointer hover:bg-muted/30"
               style={{ animationDelay: `${index * 50}ms` }}
             >
+              <TableCell className="font-mono text-sm text-muted-foreground">
+                {merchant.id}
+              </TableCell>
               <TableCell>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-semibold text-primary">
                       {merchant.name.split(" ").map(n => n[0]).join("")}
                     </span>
                   </div>
-                  <div>
-                    <p className="font-medium">{merchant.name}</p>
-                    <p className="text-sm text-muted-foreground">{merchant.email}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate" title={merchant.name}>{merchant.name}</p>
+                    <p className="text-sm text-muted-foreground truncate" title={merchant.email}>{merchant.email}</p>
                   </div>
                 </div>
               </TableCell>
-              <TableCell className="font-medium">{merchant.businessName}</TableCell>
-              <TableCell className="font-semibold">
+              <TableCell className="font-medium truncate max-w-[180px]" title={merchant.businessName}>{merchant.businessName}</TableCell>
+              <TableCell className="font-semibold truncate" title={formatAmount(merchant.totalVolume, merchant.currency)}>
                 {formatAmount(merchant.totalVolume, merchant.currency)}
               </TableCell>
               <TableCell>

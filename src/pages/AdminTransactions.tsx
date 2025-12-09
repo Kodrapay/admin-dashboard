@@ -83,6 +83,10 @@ export default function AdminTransactions() {
         }));
         setTransactions(txList);
 
+        // Fetch real pending settlements
+        const settlementsResp = await fetchFromAPI(apiClient.admin.settlementsPending);
+        const pendingAmount = settlementsResp?.total_pending || 0;
+
         // Calculate stats from transactions
         const total = txList.reduce((sum: number, tx: Transaction) => sum + tx.amount, 0);
         const successful = txList.filter((tx: Transaction) => tx.status === "successful").length;
@@ -94,18 +98,18 @@ export default function AdminTransactions() {
           processedToday: new Intl.NumberFormat("en-NG", {
             style: "currency",
             currency: "NGN",
-          }).format(total),
+          }).format(total / 100),
           successRate: `${successRate}%`,
           chargebacks: 0,
           avgTxnSize: new Intl.NumberFormat("en-NG", {
             style: "currency",
             currency: "NGN",
-          }).format(avgTicket),
+          }).format(avgTicket / 100),
           failedToday: failed,
           pendingSettlements: new Intl.NumberFormat("en-NG", {
             style: "currency",
             currency: "NGN",
-          }).format(total * 0.12),
+          }).format(pendingAmount / 100),
           disputesThisWeek: 0,
         });
       } catch (error) {
@@ -125,21 +129,21 @@ export default function AdminTransactions() {
         </Card>
       ) : (
         <div className="grid md:grid-cols-4 gap-4 mb-6">
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Processed today</p>
-            <p className="text-2xl font-semibold text-foreground mt-1">{stats.processedToday}</p>
+          <Card className="p-5">
+            <p className="text-sm text-muted-foreground mb-2">Processed today</p>
+            <p className="text-xl md:text-2xl font-semibold text-foreground break-words leading-tight">{stats.processedToday}</p>
           </Card>
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Success rate</p>
-            <p className="text-2xl font-semibold text-foreground mt-1">{stats.successRate}</p>
+          <Card className="p-5">
+            <p className="text-sm text-muted-foreground mb-2">Success rate</p>
+            <p className="text-xl md:text-2xl font-semibold text-foreground">{stats.successRate}</p>
           </Card>
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Chargebacks</p>
-            <p className="text-2xl font-semibold text-foreground mt-1 text-warning">{stats.chargebacks}</p>
+          <Card className="p-5">
+            <p className="text-sm text-muted-foreground mb-2">Chargebacks</p>
+            <p className="text-xl md:text-2xl font-semibold text-warning">{stats.chargebacks}</p>
           </Card>
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Avg. txn size</p>
-            <p className="text-2xl font-semibold text-foreground mt-1">{stats.avgTxnSize}</p>
+          <Card className="p-5">
+            <p className="text-sm text-muted-foreground mb-2">Avg. txn size</p>
+            <p className="text-xl md:text-2xl font-semibold text-foreground break-words leading-tight">{stats.avgTxnSize}</p>
           </Card>
         </div>
       )}

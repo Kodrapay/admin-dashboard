@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, Globe, Cpu, Activity } from "lucide-react";
+import { apiClient, fetchFromAPI } from "@/lib/api-client";
 
 const performance = [
   { label: "Nigeria", value: 64, color: "bg-primary" },
@@ -19,6 +21,45 @@ const alerts = [
 ];
 
 export default function AdminAnalytics() {
+  const [revenueData, setRevenueData] = useState<Array<{ name: string; revenue: number }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const txResp = await fetchFromAPI(apiClient.admin.transactions);
+        const txRaw = Array.isArray(txResp) ? txResp : txResp?.transactions || txResp?.data || [];
+        const transactions = Array.isArray(txRaw) ? txRaw : [];
+
+        // Group transactions by month
+        const monthlyRevenue = new Map<string, number>();
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+        transactions.forEach((tx: any) => {
+          if (tx.status === "success" || tx.status === "successful" || tx.status === "completed" || tx.status === "paid") {
+            const date = new Date(tx.created_at || Date.now());
+            const monthKey = monthNames[date.getMonth()];
+            const amount = tx.amount || 0;
+            monthlyRevenue.set(monthKey, (monthlyRevenue.get(monthKey) || 0) + amount);
+          }
+        });
+
+        // Convert to chart data format
+        const chartData = monthNames.map(month => ({
+          name: month,
+          revenue: monthlyRevenue.get(month) || 0,
+        }));
+
+        setRevenueData(chartData);
+      } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
   return (
     <DashboardLayout type="admin" title="Analytics">
       <div className="grid lg:grid-cols-3 gap-6 mb-8">
@@ -81,9 +122,15 @@ export default function AdminAnalytics() {
         </Card>
       </div>
 
-      <Card className="p-6 mb-6">
-        <RevenueChart title="Revenue performance" />
-      </Card>
+      {isLoading ? (
+        <Card className="p-8 text-center mb-6">
+          <p className="text-muted-foreground">Loading revenue data...</p>
+        </Card>
+      ) : (
+        <Card className="p-6 mb-6">
+          <RevenueChart title="Revenue performance" data={revenueData} />
+        </Card>
+      )}
 
       <div className="grid md:grid-cols-3 gap-4">
         {alerts.map((alert) => (

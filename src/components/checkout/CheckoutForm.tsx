@@ -29,7 +29,7 @@ export function CheckoutForm({
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
       currency: currency,
-    }).format(amount);
+    }).format(amount / 100);
   };
 
   const formatCardNumber = (value: string) => {

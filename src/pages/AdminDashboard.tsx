@@ -42,7 +42,7 @@ type Merchant = {
 };
 
 type DashboardStats = {
-  totalRevenue: string;
+  totalRevenue: number;
   activeMerchants: number;
   verifiedToday: number;
   pendingOnboarding: number;
@@ -56,7 +56,7 @@ export default function AdminDashboard() {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [merchantRaw, setMerchantRaw] = useState<any[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
-    totalRevenue: "₦0",
+    totalRevenue: 0,
     activeMerchants: 0,
     verifiedToday: 0,
     pendingOnboarding: 0,
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
       const statsResp = await fetchFromAPI(`${API_BASE_URL}/admin/stats`);
       const safeStats = statsResp && typeof statsResp === "object" ? (statsResp as Record<string, any>) : {};
       setStats({
-        totalRevenue: new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 2 }).format(totalRevenue),
+        totalRevenue: totalRevenue,
         activeMerchants: safeStats.active_merchants || 0,
         verifiedToday: safeStats.verified_today || 0,
         pendingOnboarding: safeStats.pending_kyc || 0,
@@ -202,9 +202,9 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatsCard
               title="Total Revenue"
-              value={stats.totalRevenue}
+              value={new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 2 }).format(stats.totalRevenue / 100)}
               change={`Avg per txn: ${new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(
-                stats.totalTransactions ? Number(stats.totalRevenue.replace(/[₦,]/g, "")) / stats.totalTransactions : 0
+                stats.totalTransactions ? (stats.totalRevenue / stats.totalTransactions) / 100 : 0
               )}`}
               changeType="positive"
               icon={DollarSign}

@@ -118,30 +118,30 @@ export function PendingApprovals({ merchants, onApprovalChange }: PendingApprova
       {pendingMerchants.map((merchant) => (
         <Card key={merchant.id} className="p-6 border-l-4 border-l-warning">
           <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
+            <div className="flex-1 min-w-0 pr-4">
               <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-lg font-semibold">{merchant.business_name}</h3>
-                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
+                <h3 className="text-lg font-semibold truncate" title={merchant.business_name}>{merchant.business_name}</h3>
+                <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 flex-shrink-0">
                   <Clock className="h-3 w-3 mr-1" />
                   Pending Review
                 </Badge>
               </div>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  <span>Contact: {merchant.name}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Building2 className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate" title={merchant.name}>Contact: {merchant.name}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  <span>{merchant.email}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Mail className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate" title={merchant.email}>{merchant.email}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  <span>{merchant.country}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <MapPin className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{merchant.country}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  <span>Submitted: {formatDate(merchant.created_at)}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Clock className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Submitted: {formatDate(merchant.created_at)}</span>
                 </div>
               </div>
             </div>

@@ -19,6 +19,7 @@ export const apiClient = {
     transactionsFraud: `${API_BASE_URL}/admin/transactions/fraud`,
     transactionApprove: (ref: string) => `${API_BASE_URL}/admin/transactions/${ref}/approve`,
     transactionDecline: (ref: string) => `${API_BASE_URL}/admin/transactions/${ref}/decline`,
+    settlementsPending: `${API_BASE_URL}/admin/settlements/pending`,
     settlementTrigger: `${API_BASE_URL}/admin/settlements/trigger`,
     reports: `${API_BASE_URL}/admin/reports`,
   },
