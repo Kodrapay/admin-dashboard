@@ -13,8 +13,10 @@ import AdminTransactions from "./pages/AdminTransactions";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminSettings from "./pages/AdminSettings";
 import AdminFraud from "./pages/AdminFraud";
+import AdminPlatformRevenue from "./pages/AdminPlatformRevenue"; // New import
 import Checkout from "./pages/Checkout";
 import { validateSession, getSessionCookie } from "./lib/session";
+import { ThemeProvider } from "next-themes";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const navigate = useNavigate();
@@ -98,80 +100,90 @@ const RedirectIfAuthed = ({ children }: { children: JSX.Element }) => {
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route
-            path="/admin/login"
-            element={
-              <RedirectIfAuthed>
-                <AdminLogin />
-              </RedirectIfAuthed>
-            }
-          />
-          <Route
-            path="/admin"
-            element={<Navigate to="/admin/dashboard" replace />}
-          />
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/merchants"
-            element={
-              <ProtectedRoute>
-                <AdminMerchants />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/transactions"
-            element={
-              <ProtectedRoute>
-                <AdminTransactions />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/analytics"
-            element={
-              <ProtectedRoute>
-                <AdminAnalytics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/settings"
-            element={
-              <ProtectedRoute>
-                <AdminSettings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/fraud"
-            element={
-              <ProtectedRoute>
-                <AdminFraud />
-              </ProtectedRoute>
-            }
-          />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route
+              path="/admin/login"
+              element={
+                <RedirectIfAuthed>
+                  <AdminLogin />
+                </RedirectIfAuthed>
+              }
+            />
+            <Route
+              path="/admin"
+              element={<Navigate to="/admin/dashboard" replace />}
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/merchants"
+              element={
+                <ProtectedRoute>
+                  <AdminMerchants />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/transactions"
+              element={
+                <ProtectedRoute>
+                  <AdminTransactions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <ProtectedRoute>
+                  <AdminAnalytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <ProtectedRoute>
+                  <AdminSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/fraud"
+              element={
+                <ProtectedRoute>
+                  <AdminFraud />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/platform-revenue" // New route
+              element={
+                <ProtectedRoute>
+                  <AdminPlatformRevenue />
+                </ProtectedRoute>
+              }
+            />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

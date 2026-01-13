@@ -10,6 +10,7 @@ import {
   Wallet,
   ArrowLeftRight,
   FileText,
+  DollarSign, // New import
 } from "lucide-react";
 
 interface SidebarProps {
@@ -22,6 +23,7 @@ const adminLinks = [
   { href: "/admin/transactions", icon: ArrowLeftRight, label: "Transactions" },
   { href: "/admin/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/admin/fraud", icon: Shield, label: "Fraud" },
+  { href: "/admin/platform-revenue", icon: DollarSign, label: "Platform Revenue" }, // New link
   { href: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 

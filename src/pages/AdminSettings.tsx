@@ -10,6 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { Shield, Bell, Server } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// Assuming API_BASE_URL is defined elsewhere and accessible, e.g., via an environment variable or a config file
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"; // Placeholder, adjust as needed
+
 export default function AdminSettings() {
   const { toast } = useToast();
   const [maintenanceMsg, setMaintenanceMsg] = useState("");
@@ -21,12 +24,45 @@ export default function AdminSettings() {
     });
   };
 
-  const handleShareUpdate = () => {
-    toast({
-      title: "Update Shared",
-      description: "Maintenance window update has been shared with merchants.",
-    });
-    setMaintenanceMsg("");
+  const handleShareUpdate = async () => {
+    if (!maintenanceMsg.trim()) {
+      toast({
+        title: "Error",
+        description: "Maintenance message cannot be empty.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/notifications/publish`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication token if required
+          // "Authorization": `Bearer ${yourAuthToken}`
+        },
+        body: JSON.stringify({ message: maintenanceMsg }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to publish maintenance update.");
+      }
+
+      toast({
+        title: "Update Shared",
+        description: "Maintenance window update has been shared with merchants.",
+      });
+      setMaintenanceMsg("");
+    } catch (error) {
+      console.error("Error publishing maintenance update:", error);
+      toast({
+        title: "Error",
+        description: `Failed to share update: ${error instanceof Error ? error.message : "Unknown error"}`,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRotateKey = () => {
